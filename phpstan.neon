@@ -1,0 +1,13 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+        - routes/
+
+    # レベル9が最高。レベル6は「型が指定されていない」こと等を厳しくチェックします。
+    level: 6
+
+    ignoreErrors:
+        # 開発初期に出やすいLaravel特有の警告を一部無視する設定があればここに書きますが、まずは空でOKです。
