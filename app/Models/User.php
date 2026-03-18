@@ -7,10 +7,11 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -22,6 +23,10 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',       // 追加
+        'gender',      // 追加
+        'birth_date',  // 追加
+        'memo',        // 追加
     ];
 
     /**
@@ -44,6 +49,13 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'birth_date' => 'date', // 追加
         ];
+    }
+
+    // 追加：ユーザーは複数の予約を持つ（1対多）
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
     }
 }

@@ -17,6 +17,12 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            // ここから追加
+            $table->string('phone')->nullable();
+            $table->string('gender')->nullable();
+            $table->date('birth_date')->nullable();
+            $table->text('memo')->nullable(); // 店舗側メモ
+            // ここまで追加
             $table->rememberToken();
             $table->timestamps();
         });

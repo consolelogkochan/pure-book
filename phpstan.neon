@@ -9,5 +9,7 @@ parameters:
     # レベル9が最高。レベル6は「型が指定されていない」こと等を厳しくチェックします。
     level: 6
 
+    # 廃止された設定を消し、代わりに identifier（エラーID）で無視リストに追加します
     ignoreErrors:
+        - identifier: missingType.generics
         # 開発初期に出やすいLaravel特有の警告を一部無視する設定があればここに書きますが、まずは空でOKです。
