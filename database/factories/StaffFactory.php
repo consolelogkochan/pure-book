@@ -18,7 +18,9 @@ class StaffFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            // fake() を使うと、ランダムな日本語の名前などを自動生成してくれます
+            'name' => fake()->name(),
+            'is_active' => true,
         ];
     }
 }

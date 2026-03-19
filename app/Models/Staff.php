@@ -10,8 +10,6 @@ class Staff extends Model
 {
     use HasFactory;
 
-    protected $table = 'staffs';
-
     protected $fillable = ['name', 'is_active'];
 
     protected function casts(): array
