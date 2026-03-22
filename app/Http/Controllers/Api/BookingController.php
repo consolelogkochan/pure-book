@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\Menu;
 use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -99,5 +100,79 @@ class BookingController extends Controller
                 'message' => $e->getMessage(),
             ], 409);
         }
+    }
+
+    // ▼ここから追加：予約照会メソッド▼
+    public function search(Request $request): JsonResponse
+    {
+        // 1. 予約番号、メールアドレスの入力データを受け取る（推論通り！）
+        $validated = $request->validate([
+            'booking_reference' => ['required', 'string'],
+            'email' => ['required', 'email'],
+        ]);
+
+        // 2. データベースのBookingから、一致するデータを取得する
+        // （with()を使うことで、紐づくメニュー名やスタッフ名も一緒に取得できます）
+        $booking = Booking::with(['menu', 'staff'])
+            ->where('booking_reference', $validated['booking_reference'])
+            ->where('customer_email', $validated['email'])
+            ->first(); // 1件だけ取得（見つからなければ null になる）
+
+        // もしデータが見つからなかった場合は、404エラー（Not Found）を返す
+        if (! $booking) {
+            return response()->json([
+                'message' => '指定された予約が見つかりません。入力内容をご確認ください。',
+            ], 404);
+        }
+
+        // 3. 取得したBookingに保存されているデータを返す
+        return response()->json([
+            'message' => '予約が見つかりました。',
+            'booking' => $booking,
+        ]);
+    }
+
+    // ▼ここから追加：予約キャンセルメソッド▼
+    public function cancel(Request $request, string $reference): JsonResponse
+    {
+        // セキュリティ対策：誰でもキャンセルできないよう、メールアドレスも一緒に送ってもらいます
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        // 予約番号とメールアドレスで本人確認
+        $booking = Booking::where('booking_reference', $reference)
+            ->where('customer_email', $validated['email'])
+            ->first();
+
+        if (! $booking) {
+            return response()->json(['message' => '予約が見つからないか、認証に失敗しました。'], 404);
+        }
+
+        // 既にキャンセル済みの場合はエラーを返す
+        if ($booking->status === 'cancelled') {
+            return response()->json(['message' => 'この予約はすでにキャンセルされています。'], 400);
+        }
+
+        // 1. 予約の'start_time'から24時間を引いた日時を計算する（Carbonの subHours() を使用）
+        $cancelDeadline = Carbon::parse($booking->start_time)->subHours(24);
+        $now = Carbon::now();
+
+        // 2. 現在の時刻と計算した日時を比較する
+        if ($now > $cancelDeadline) {
+            // 現在時刻が期限を過ぎている場合は、403エラー（Forbidden：禁止）を返す
+            return response()->json([
+                'message' => 'キャンセル期限（予約の24時間前）を過ぎているため、システムからのキャンセルはできません。店舗へ直接お電話ください。',
+            ], 403);
+        }
+
+        // 3. キャンセル処理を通す（status を cancelled に更新）
+        $booking->update(['status' => 'cancelled']);
+
+        // 4. キャンセル成功のテキストを返す
+        return response()->json([
+            'message' => '予約のキャンセルが完了しました。',
+            'booking' => $booking,
+        ]);
     }
 }

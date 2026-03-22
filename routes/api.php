@@ -19,3 +19,9 @@ Route::get('/available-slots', [AvailableSlotController::class, 'index']);
 
 // ▼ここを追加（データの保存なので POST メソッドを使います）▼
 Route::post('/bookings', [BookingController::class, 'store']);
+
+// 1. 予約照会API（検索条件を送るためPOSTを使います）
+Route::post('/bookings/search', [BookingController::class, 'search']);
+
+// 2. 予約キャンセルAPI（URLに予約番号を含め、削除を意味するDELETEを使います）
+Route::delete('/bookings/{reference}', [BookingController::class, 'cancel']);
