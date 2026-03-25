@@ -109,7 +109,11 @@ export const BookingWizard = () => {
       // 4. 【推論実装】409エラー時のUX
       if (error.response && error.response.status === 409) {
         alert('申し訳ありません！タッチの差でこの時間は埋まってしまいました。別の時間をお選びください。');
-        setSelectedTime(null); // 時間選択だけをリセットしてStep 2に戻す
+        // 現在選ばれている日付をそのまま渡して、空き時間再取得APIをもう一度叩き直す！
+        // （handleDateChangeの中で setSelectedTime(null) も実行されるため一石二鳥です）
+        if (selectedDate) {
+          handleDateChange(selectedDate);
+        }
       } else {
         alert('予約の保存に失敗しました。入力内容をご確認ください。');
       }
