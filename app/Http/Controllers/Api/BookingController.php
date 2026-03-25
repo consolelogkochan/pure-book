@@ -83,6 +83,7 @@ class BookingController extends Controller
                     'customer_email' => $validated['customer_email'],
                     'customer_phone' => $validated['customer_phone'],
                     'customer_memo' => $validated['customer_memo'] ?? null,
+                    'survey_responses' => $validated['survey_responses'] ?? null,
                     'status' => 'confirmed',
                 ]);
 
