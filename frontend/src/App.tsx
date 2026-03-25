@@ -3,22 +3,13 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Button } from './components/Button';
 import { Input } from './components/Input';
+import { BookingWizard } from './pages/BookingWizard'; // 👈 追加
 
 // ==========================================
 // 仮のページコンポーネント（後のカードで別ファイルに分けます）
 // ==========================================
 
-// トップページ（/）
-const HomePage = () => (
-  <div className="p-8 text-center">
-    <h2 className="text-2xl font-bold mb-4">ご予約はこちらから</h2>
-    <p className="mb-8 text-gray-600">希望のメニューとスタッフを選択してください。</p>
-    {/* Linkコンポーネントを使うと、画面を白くせずに（高速に）URLだけを書き換えます */}
-    <Link to="/search">
-      <Button colorClass="bg-green-600 hover:bg-green-700">予約を検索・キャンセルする</Button>
-    </Link>
-  </div>
-);
+
 
 // 検索ページ（/search）
 const SearchPage = () => (
@@ -63,7 +54,7 @@ function App() {
         <main className="grow">
           {/* URLとDOMの紐づけ設定 */}
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<BookingWizard />} />
             <Route path="/search" element={<SearchPage />} />
           </Routes>
         </main>
