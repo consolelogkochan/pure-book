@@ -151,7 +151,7 @@ export const AdminCalendar = () => {
               </select>
             </div>
 
-            {/* 事実としていただいた、重要な店舗用メモ欄 */}
+            {/* 店舗用メモ欄 */}
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">店舗用メモ（お客様には非公開）</label>
               <textarea 
