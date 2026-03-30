@@ -5,6 +5,7 @@ import { BookingWizard } from './pages/BookingWizard'; // 👈 追加
 import { BookingSearch } from './pages/BookingSearch'; // 👈 新しく追加
 import { AdminCalendar } from './pages/AdminCalendar'; // 👈 追加
 import { AdminSearch } from './pages/AdminSearch'; // 👈 追加
+import { AdminSettings } from './pages/AdminSettings'; // 👈 追加
 
 // ==========================================
 // アプリの骨組み（ルーティング設定）
@@ -36,6 +37,7 @@ function App() {
         <Route path="/admin/calendar" element={<AdminCalendar />} />
         {/* 今後ここに追加していきます： <Route path="/admin/search" element={<AdminSearch />} /> */}
         <Route path="/admin/search" element={<AdminSearch />} />
+        <Route path="/admin/settings" element={<AdminSettings />} />
       </Routes>
     </BrowserRouter>
   );

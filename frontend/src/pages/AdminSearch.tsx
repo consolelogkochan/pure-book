@@ -69,7 +69,7 @@ export const AdminSearch = () => {
             下部：検索結果一覧テーブルUI
             ========================================== */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {/* 伊崎さんの推論！横幅がはみ出た時だけスクロールさせる最強のクラス */}
+          {/* 横幅がはみ出た時だけスクロールさせる最強のクラス */}
           <div className="overflow-x-auto">
             {/* whitespace-nowrap で文字の自動改行を防ぎ、表をきれいに保つ */}
             <table className="w-full text-left border-collapse whitespace-nowrap min-w-300">
@@ -100,7 +100,7 @@ export const AdminSearch = () => {
                       {result.survey}
                     </td>
                     <td className="p-4">
-                      {/* 事実3: 一覧から直接ステータスを変更できるUI */}
+                      {/*  一覧から直接ステータスを変更できるUI */}
                       <select 
                         defaultValue={result.status}
                         className={`text-sm font-bold border rounded px-2 py-1 ${
