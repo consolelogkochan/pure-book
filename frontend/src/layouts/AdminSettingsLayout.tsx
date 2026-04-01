@@ -2,7 +2,6 @@ import { Link, useLocation, Outlet } from 'react-router-dom';
 import { AdminLayout } from './AdminLayout';
 
 export const AdminSettingsLayout = () => {
-  // 現在のURLを取得
   const location = useLocation();
   const isActive = (path: string) => location.pathname.includes(path);
 
@@ -20,17 +19,23 @@ export const AdminSettingsLayout = () => {
     <AdminLayout>
       <div className="flex flex-col md:flex-row gap-6 relative">
         
-        {/* 左サイドバー */}
+        {/* 左サイドバー（スマホ時は上部の横スクロールタブに変化） */}
         <div className="w-full md:w-64 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-fit">
-          <nav className="flex flex-col">
+          {/* 変更点1: スマホ時は flex-row と overflow-x-auto で横スクロールさせる */}
+          <nav className="flex flex-row md:flex-col overflow-x-auto custom-scrollbar">
             {menuItems.map(item => (
               <Link
                 key={item.id}
                 to={item.path}
-                // URLが一致しているか判定して色を変える
-                className={`text-left px-6 py-4 border-b border-slate-100 font-bold transition-colors ${
-                  isActive(item.id) ? 'bg-blue-50 text-blue-700 border-l-4 border-l-blue-600' : 'text-slate-600 hover:bg-slate-50'
-                }`}
+                // 変更点2: whitespace-nowrap で文字の改行を防ぎ、shrink-0 で要素が潰れないようにする
+                className={`
+                  whitespace-nowrap shrink-0 text-center md:text-left px-4 md:px-6 py-3 md:py-4 font-bold transition-colors
+                  /* スマホ用のデザイン（下線）と、PC用のデザイン（左線）をブレイクポイント(md:)で切り替え */
+                  ${isActive(item.id) 
+                    ? 'bg-blue-50 text-blue-700 border-b-4 border-blue-600 md:border-b md:border-slate-100 md:border-l-4' 
+                    : 'text-slate-600 hover:bg-slate-50 border-b-4 border-transparent md:border-b md:border-slate-100 md:border-l-4'
+                  }
+                `}
               >
                 {item.label}
               </Link>
@@ -40,7 +45,6 @@ export const AdminSettingsLayout = () => {
 
         {/* 右メインコンテンツ */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8 min-h-125">
-          {/* ▼ ここが魔法のタグ。URLに応じて、子コンポーネントがここにスポッと入ります ▼ */}
           <Outlet />
         </div>
       </div>

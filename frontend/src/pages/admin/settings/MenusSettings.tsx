@@ -17,36 +17,40 @@ export const MenusSettings = () => {
 
   return (
     <div className="space-y-6 animate-fade-in relative">
-      <div className="flex justify-between items-center border-b pb-2">
+      {/* 変更点1: スマホ時は flex-col で縦並びにし、ボタンを w-full で押しやすくする */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-4 sm:gap-0">
         <h2 className="text-xl font-bold text-slate-800">メニュー登録</h2>
-        <Button onClick={() => setIsMenuModalOpen(true)} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-4 text-sm">
+        <Button onClick={() => setIsMenuModalOpen(true)} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-4 text-sm w-full sm:w-auto">
           ＋ 新規メニュー追加
         </Button>
       </div>
       
-      <table className="w-full text-left border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th className="p-3 font-bold text-sm text-slate-600">メニュー名</th>
-            <th className="p-3 font-bold text-sm text-slate-600">料金</th>
-            <th className="p-3 font-bold text-sm text-slate-600">所要時間</th>
-            <th className="p-3 font-bold text-sm text-slate-600 text-right">操作</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {mockMenus.map(menu => (
-            <tr key={menu.id} className="hover:bg-slate-50">
-              <td className="p-3 font-bold text-slate-800">{menu.name}</td>
-              <td className="p-3 text-slate-600">{menu.price}</td>
-              <td className="p-3 text-slate-600">{menu.duration}分</td>
-              <td className="p-3 text-right space-x-2">
-                <button onClick={() => setIsMenuModalOpen(true)} className="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-100 font-bold">編集</button>
-                <button onClick={() => handleDelete('menu', menu.name)} className="text-sm border border-red-200 text-red-600 px-3 py-1 rounded hover:bg-red-50 font-bold">削除</button>
-              </td>
+      {/* 変更点2: overflow-x-auto で囲み、表自体には whitespace-nowrap と min-w-150 を付与して潰れを防ぐ */}
+      <div className="overflow-x-auto pb-2">
+        <table className="w-full text-left border-collapse whitespace-nowrap min-w-150">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="p-3 font-bold text-sm text-slate-600">メニュー名</th>
+              <th className="p-3 font-bold text-sm text-slate-600">料金</th>
+              <th className="p-3 font-bold text-sm text-slate-600">所要時間</th>
+              <th className="p-3 font-bold text-sm text-slate-600 text-right">操作</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {mockMenus.map(menu => (
+              <tr key={menu.id} className="hover:bg-slate-50">
+                <td className="p-3 font-bold text-slate-800">{menu.name}</td>
+                <td className="p-3 text-slate-600">{menu.price}</td>
+                <td className="p-3 text-slate-600">{menu.duration}分</td>
+                <td className="p-3 text-right space-x-2">
+                  <button onClick={() => setIsMenuModalOpen(true)} className="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-100 font-bold">編集</button>
+                  <button onClick={() => handleDelete('menu', menu.name)} className="text-sm border border-red-200 text-red-600 px-3 py-1 rounded hover:bg-red-50 font-bold">削除</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {isMenuModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

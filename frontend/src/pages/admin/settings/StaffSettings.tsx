@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '../../../components/Button';
+import { Button } from '../../../components/Button'; 
 
 export const StaffSettings = () => {
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
@@ -17,34 +17,38 @@ export const StaffSettings = () => {
 
   return (
     <div className="space-y-6 animate-fade-in relative">
-      <div className="flex justify-between items-center border-b pb-2">
+      {/* 変更点1: スマホ時は flex-col で縦並びにし、ボタンを w-full で押しやすくする */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-4 sm:gap-0">
         <h2 className="text-xl font-bold text-slate-800">スタッフ登録</h2>
-        <Button onClick={() => setIsStaffModalOpen(true)} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-4 text-sm">
+        <Button onClick={() => setIsStaffModalOpen(true)} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-4 text-sm w-full sm:w-auto">
           ＋ 新規スタッフ追加
         </Button>
       </div>
       
-      <table className="w-full text-left border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th className="p-3 font-bold text-sm text-slate-600">スタッフ名</th>
-            <th className="p-3 font-bold text-sm text-slate-600">役職・ラベル</th>
-            <th className="p-3 font-bold text-sm text-slate-600 text-right">操作</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {mockStaffs.map(staff => (
-            <tr key={staff.id} className="hover:bg-slate-50">
-              <td className="p-3 font-bold text-slate-800">{staff.name}</td>
-              <td className="p-3 text-slate-600"><span className="bg-slate-100 px-2 py-1 rounded text-xs">{staff.role}</span></td>
-              <td className="p-3 text-right space-x-2">
-                <button onClick={() => setIsStaffModalOpen(true)} className="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-100 font-bold">編集</button>
-                <button onClick={() => handleDelete('staff', staff.name)} className="text-sm border border-red-200 text-red-600 px-3 py-1 rounded hover:bg-red-50 font-bold">削除</button>
-              </td>
+      {/* 変更点2: overflow-x-auto で囲み、表自体には whitespace-nowrap と min-w-150 を付与して潰れを防ぐ */}
+      <div className="overflow-x-auto pb-2">
+        <table className="w-full text-left border-collapse whitespace-nowrap min-w-150">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="p-3 font-bold text-sm text-slate-600">スタッフ名</th>
+              <th className="p-3 font-bold text-sm text-slate-600">役職・ラベル</th>
+              <th className="p-3 font-bold text-sm text-slate-600 text-right">操作</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {mockStaffs.map(staff => (
+              <tr key={staff.id} className="hover:bg-slate-50">
+                <td className="p-3 font-bold text-slate-800">{staff.name}</td>
+                <td className="p-3 text-slate-600"><span className="bg-slate-100 px-2 py-1 rounded text-xs">{staff.role}</span></td>
+                <td className="p-3 text-right space-x-2">
+                  <button onClick={() => setIsStaffModalOpen(true)} className="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-100 font-bold">編集</button>
+                  <button onClick={() => handleDelete('staff', staff.name)} className="text-sm border border-red-200 text-red-600 px-3 py-1 rounded hover:bg-red-50 font-bold">削除</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {isStaffModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

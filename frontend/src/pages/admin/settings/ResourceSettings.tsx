@@ -1,4 +1,4 @@
-import { Button } from '../../../components/Button';
+import { Button } from '../../../components/Button'; 
 
 export const ResourceSettings = () => {
   const mockStaffs = [
@@ -9,13 +9,16 @@ export const ResourceSettings = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center border-b pb-2">
+      
+      {/* 変更点1: スマホ時はタイトルと説明文を縦並び(flex-col)にし、説明文の文字サイズを少し小さくする */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b pb-2 gap-2 sm:gap-0">
         <h2 className="text-xl font-bold text-slate-800">リソース管理（シフト設定）</h2>
-        <span className="text-sm text-slate-500">※カレンダーに表示する出勤状況を設定します</span>
+        <span className="text-xs sm:text-sm text-slate-500">※カレンダーに表示する出勤状況を設定します</span>
       </div>
       
-      <div className="overflow-x-auto">
-        <table className="w-full text-center border-collapse min-w-150">
+      {/* 変更点2: overflow-x-auto で囲み、8列分の広さを確保するため min-w-200 と whitespace-nowrap を追加 */}
+      <div className="overflow-x-auto pb-2">
+        <table className="w-full text-center border-collapse whitespace-nowrap min-w-200">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="p-3 font-bold text-sm text-slate-600 text-left">スタッフ名</th>
@@ -41,11 +44,14 @@ export const ResourceSettings = () => {
           </tbody>
         </table>
       </div>
-      <div className="flex justify-end mt-4">
-        <Button colorClass="bg-slate-800 hover:bg-slate-700 py-2 px-8 shadow-sm">
+      
+      {/* 変更点3: スマホ時は「シフトを保存」ボタンを w-full にして押しやすくする */}
+      <div className="flex justify-center sm:justify-end mt-4">
+        <Button colorClass="bg-slate-800 hover:bg-slate-700 py-3 sm:py-2 px-8 shadow-sm w-full sm:w-auto">
           シフトを保存
         </Button>
       </div>
+
     </div>
   );
 };
