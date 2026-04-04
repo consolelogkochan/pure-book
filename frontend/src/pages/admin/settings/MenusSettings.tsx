@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Button } from '../../../components/Button';
 
 // APIから返ってくるメニューの型定義
@@ -21,9 +22,8 @@ export const MenusSettings = () => {
   // 1. 初回マウント時にメニュー一覧を取得
   const fetchMenus = async () => {
     try {
-      const res = await fetch('http://localhost/api/admin/menus');
-      const data = await res.json();
-      setMenus(data);
+      const res = await axios.get('http://localhost/api/admin/menus');
+      setMenus(res.data);
     } catch (error) {
       console.error('メニューの取得に失敗しました', error);
     }
@@ -33,14 +33,13 @@ export const MenusSettings = () => {
     fetchMenus();
   }, []);
 
-  // 2. 伊崎さんの推論！ 削除の代わりにステータス切り替え
+  // 2.  削除の代わりにステータス切り替え
   const handleToggleStatus = async (menu: Menu) => {
     const actionText = menu.is_active ? '非公開' : '公開';
     if (!window.confirm(`本当に「${menu.name}」を${actionText}にしますか？`)) return;
 
     try {
-      await fetch(`http://localhost/api/admin/menus/${menu.id}/toggle-status`, {
-        method: 'PATCH',
+      await axios.patch(`http://localhost/api/admin/menus/${menu.id}/toggle-status`, {}, {
         headers: { 'Accept': 'application/json' },
       });
       fetchMenus(); // 成功したら一覧を再取得して画面を更新
@@ -66,13 +65,15 @@ export const MenusSettings = () => {
     const url = editingMenu 
       ? `http://localhost/api/admin/menus/${editingMenu.id}` 
       : 'http://localhost/api/admin/menus';
-    const method = editingMenu ? 'PUT' : 'POST';
+    
+    const method = editingMenu ? 'put' : 'post';
 
     try {
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(formData),
+      await axios({
+        method: method,
+        url: url,
+        data: formData, 
+        headers: { 'Accept': 'application/json' },
       });
       setIsMenuModalOpen(false);
       fetchMenus(); // 一覧を再取得
