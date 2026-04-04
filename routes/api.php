@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\MenuController;  // 追加
 use App\Http\Controllers\Api\StaffController; // 追加
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route; // 👈 忘れずに追加！
+use App\Http\Controllers\Api\Admin\MenuController as AdminMenuController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -25,3 +26,11 @@ Route::post('/bookings/search', [BookingController::class, 'search']);
 
 // 2. 予約キャンセルAPI（URLに予約番号を含め、削除を意味するDELETEを使います）
 Route::delete('/bookings/{reference}', [BookingController::class, 'cancel']);
+
+// ▼ 追加：管理者用API（URLの先頭に /admin がつく）
+Route::prefix('admin')->group(function () {
+    Route::get('/menus', [AdminMenuController::class, 'index']);
+    Route::post('/menus', [AdminMenuController::class, 'store']);
+    Route::put('/menus/{menu}', [AdminMenuController::class, 'update']);
+    Route::patch('/menus/{menu}/toggle-status', [AdminMenuController::class, 'toggleStatus']);
+});
