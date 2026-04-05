@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\StaffController; // 追加
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route; // 👈 忘れずに追加！
 use App\Http\Controllers\Api\Admin\MenuController as AdminMenuController;
+use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -29,8 +30,15 @@ Route::delete('/bookings/{reference}', [BookingController::class, 'cancel']);
 
 // ▼ 追加：管理者用API（URLの先頭に /admin がつく）
 Route::prefix('admin')->group(function () {
+    // メニュー管理
     Route::get('/menus', [AdminMenuController::class, 'index']);
     Route::post('/menus', [AdminMenuController::class, 'store']);
     Route::put('/menus/{menu}', [AdminMenuController::class, 'update']);
     Route::patch('/menus/{menu}/toggle-status', [AdminMenuController::class, 'toggleStatus']);
+
+    // スタッフ管理
+    Route::get('/staffs', [AdminStaffController::class, 'index']);
+    Route::post('/staffs', [AdminStaffController::class, 'store']);
+    Route::put('/staffs/{staff}', [AdminStaffController::class, 'update']);
+    Route::patch('/staffs/{staff}/toggle-status', [AdminStaffController::class, 'toggleStatus']);
 });
