@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route; // 👈 忘れずに追加！
 use App\Http\Controllers\Api\Admin\MenuController as AdminMenuController;
 use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
+use App\Http\Controllers\Api\Admin\ResourceController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -41,4 +42,8 @@ Route::prefix('admin')->group(function () {
     Route::post('/staffs', [AdminStaffController::class, 'store']);
     Route::put('/staffs/{staff}', [AdminStaffController::class, 'update']);
     Route::patch('/staffs/{staff}/toggle-status', [AdminStaffController::class, 'toggleStatus']);
+
+    // ▼ 追加：リソース（シフト）管理
+    Route::get('/resources', [ResourceController::class, 'index']);
+    Route::post('/resources/bulk', [ResourceController::class, 'updateBulk']);
 });

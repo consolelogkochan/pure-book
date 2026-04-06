@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Staff extends Model
 {
@@ -24,5 +25,11 @@ class Staff extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    // スタッフは1つのスケジュールを持つ（1対1）
+    public function schedule(): HasOne
+    {
+        return $this->hasOne(StaffSchedule::class);
     }
 }
