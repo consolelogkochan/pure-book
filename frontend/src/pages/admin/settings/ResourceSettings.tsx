@@ -64,10 +64,10 @@ export const ResourceSettings = () => {
     setStaffs(prevStaffs => prevStaffs.map(staff => {
       if (staff.id === staffId && staff.schedule) {
         return {
-          ...staff,
-          schedule: {
-            ...staff.schedule,
-            [dayKey]: value
+          ...staff,             // ① スタッフの基本情報（name, role等）を全部コピー！
+          schedule: {           // ② scheduleオブジェクトの中身だけ、変更された曜日の値を上書きする
+            ...staff.schedule,  // ③ 今までの月〜日のシフト情報を全部コピー！
+            [dayKey]: value     // ④ 変更された曜日の値だけ、value（出勤/休み）に書き換える
           }
         };
       }

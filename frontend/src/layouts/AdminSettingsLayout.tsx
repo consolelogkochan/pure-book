@@ -9,7 +9,6 @@ export const AdminSettingsLayout = () => {
     { id: 'hours', path: '/admin/settings/hours', label: '営業時間・休業日設定' },
     { id: 'period', path: '/admin/settings/period', label: '予約受付期間の設定' },
     { id: 'survey', path: '/admin/settings/survey', label: '予約時アンケート設定' },
-    { id: 'terms', path: '/admin/settings/terms', label: '規約設定' },
     { id: 'menus', path: '/admin/settings/menus', label: 'メニュー登録' },
     { id: 'staff', path: '/admin/settings/staff', label: 'スタッフ登録' },
     { id: 'resource', path: '/admin/settings/resource', label: 'リソース管理（シフト）' },

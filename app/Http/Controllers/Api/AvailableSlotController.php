@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Menu;
 use App\Models\Staff; // 👈 追加（重要）
+use App\Models\Setting; // 👈 追加（店舗設定モデル）
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,30 +21,53 @@ class AvailableSlotController extends Controller
             'menu_id' => ['required', 'integer', 'exists:menus,id'], // 存在するメニューIDか
         ]);
 
-        // 1. 準備（Carbonインスタンスの作成とメニューの取得）
+        // 2. 準備（Carbonインスタンスの作成とメニューの取得）
         $targetDate = Carbon::parse($validated['date']);
         $menu = Menu::findOrFail($validated['menu_id']);
 
-        // 2. 定休日のチェック（火曜日は空の配列を返す）
-        if ($targetDate->isTuesday()) {
-            return response()->json([]);
+        // 3. ターゲット日の「曜日（英語小文字）」を取得（例: 'monday'）
+        $dayOfWeek = strtolower($targetDate->englishDayOfWeek);
+
+        // 4. 店舗設定の取得
+        // 万が一、管理者が一度も設定画面を開いていない場合のエラーを防ぐため、ここでも firstOrCreate を使います
+        $settings = Setting::firstOrCreate(
+            ['id' => 1],
+            [
+                'open_time' => '10:00:00',
+                'close_time' => '20:00:00',
+                'regular_holidays' => [],
+            ]
+        );
+
+        // 5. 店舗の定休日チェック（動的判定）
+        // $settings->regular_holidays の配列の中に、ターゲットの曜日が含まれているかチェック
+        $regularHolidays = $settings->regular_holidays ?? [];
+        if (in_array($dayOfWeek, $regularHolidays)) {
+            return response()->json([]); // 定休日は空っぽを返す
         }
 
-        // ▼追加：システム全体のリソース（稼働可能なスタッフの総数）を取得
-        $totalStaffCount = Staff::where('is_active', true)->count();
-        if ($totalStaffCount === 0) {
-            return response()->json([]); // スタッフが0人なら予約不可
+        // 6. その曜日に出勤しているスタッフの総数を取得（シフト連動）
+        // 単なる is_active だけでなく、該当曜日のシフトが true のスタッフだけを数えます
+        $availableStaffCount = Staff::where('is_active', true)
+            ->whereHas('schedule', function ($q) use ($dayOfWeek) {
+                $q->where($dayOfWeek, true);
+            })
+            ->count();
+
+        if ($availableStaffCount === 0) {
+            return response()->json([]); // その日出勤するスタッフが0人なら予約不可
         }
 
-        // ▼追加：指定された日付の「すべての予約」をあらかじめ取得しておく（N+1問題対策）
+        // 7.指定された日付の「すべての予約」をあらかじめ取得しておく（N+1問題対策）
         $bookingsOnDate = Booking::whereDate('start_time', $targetDate->format('Y-m-d'))
             // キャンセルされた予約は計算から除外する
             ->where('status', '!=', 'cancelled')
             ->get();
 
-        // 3. 営業時間のセット（10:00 〜 20:00）
-        $openTime = $targetDate->copy()->setTime(10, 0);
-        $closeTime = $targetDate->copy()->setTime(20, 0);
+        // 8. 営業時間のセット（動的判定）
+        // DBから取得した "10:00:00" などの文字列を、ターゲット日の時間としてセットします
+        $openTime = $targetDate->copy()->setTimeFromTimeString($settings->open_time);
+        $closeTime = $targetDate->copy()->setTimeFromTimeString($settings->close_time);
 
         // ※もし「今日」の予約なら、現在時刻より前の枠を消すための基準時間
         $now = Carbon::now();
@@ -51,7 +75,7 @@ class AvailableSlotController extends Controller
         $availableSlots = [];
         $currentTime = $openTime->copy();
 
-        // 4. 10:00から20:00まで、30分刻みでループを回す
+        // 9. 10:00から20:00まで、30分刻みでループを回す
         while ($currentTime < $closeTime) {
             // その枠で予約した場合の「終了予定時刻」を計算
             $endTime = $currentTime->copy()->addMinutes($menu->duration_minutes);
@@ -68,7 +92,7 @@ class AvailableSlotController extends Controller
                 })->count();
 
                 // 被っている予約数が、スタッフの総数より「少ない」場合のみ、空き枠として追加
-                if ($overlappingBookings < $totalStaffCount) {
+                if ($overlappingBookings < $availableStaffCount) {
                     $availableSlots[] = $currentTime->format('H:i');
                 }
                 // ▲ここまで追加▲

@@ -7,7 +7,6 @@ import { AdminCalendar } from './pages/AdminCalendar'; // 👈 追加
 import { AdminSearch } from './pages/AdminSearch'; // 👈 追加
 import { AdminSettingsLayout } from './layouts/AdminSettingsLayout';
 import { HoursSettings } from './pages/admin/settings/HoursSettings';
-import { TermsSettings } from './pages/admin/settings/TermsSettings';
 import { PeriodSettings } from './pages/admin/settings/PeriodSettings';
 import { SurveySettings } from './pages/admin/settings/SurveySettings';
 import { MenusSettings } from './pages/admin/settings/MenusSettings';
@@ -51,7 +50,6 @@ function App() {
           
           {/* 子ルートたち（Outlet の部分に表示される） */}
           <Route path="hours" element={<HoursSettings />} />
-          <Route path="terms" element={<TermsSettings />} />
           <Route path="period" element={<PeriodSettings />} />
           <Route path="survey" element={<SurveySettings />} />
           <Route path="menus" element={<MenusSettings />} />

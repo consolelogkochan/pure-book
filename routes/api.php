@@ -2,13 +2,14 @@
 
 use App\Http\Controllers\Api\AvailableSlotController;
 use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\Api\MenuController;  // 追加
-use App\Http\Controllers\Api\StaffController; // 追加
+use App\Http\Controllers\Api\MenuController;  
+use App\Http\Controllers\Api\StaffController; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route; // 👈 忘れずに追加！
 use App\Http\Controllers\Api\Admin\MenuController as AdminMenuController;
 use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\Api\Admin\ResourceController;
+use App\Http\Controllers\Api\Admin\SettingController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -43,7 +44,11 @@ Route::prefix('admin')->group(function () {
     Route::put('/staffs/{staff}', [AdminStaffController::class, 'update']);
     Route::patch('/staffs/{staff}/toggle-status', [AdminStaffController::class, 'toggleStatus']);
 
-    // ▼ 追加：リソース（シフト）管理
+    // リソース（シフト）管理
     Route::get('/resources', [ResourceController::class, 'index']);
     Route::post('/resources/bulk', [ResourceController::class, 'updateBulk']);
+
+    // 店舗設定（常に1つのデータを扱うので、URLはシンプルに）
+    Route::get('/settings', [SettingController::class, 'show']);
+    Route::put('/settings', [SettingController::class, 'update']);
 });
