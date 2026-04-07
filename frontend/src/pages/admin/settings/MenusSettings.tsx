@@ -19,6 +19,8 @@ export const MenusSettings = () => {
   // フォーム用のState
   const [formData, setFormData] = useState({ name: '', price: 0, duration_minutes: 60 });
 
+  const [isLoading, setIsLoading] = useState(true);
+
   // 1. 初回マウント時にメニュー一覧を取得
   const fetchMenus = async () => {
     try {
@@ -26,6 +28,8 @@ export const MenusSettings = () => {
       setMenus(res.data);
     } catch (error) {
       console.error('メニューの取得に失敗しました', error);
+    } finally {
+      setIsLoading(false); 
     }
   };
 
@@ -81,6 +85,8 @@ export const MenusSettings = () => {
       alert('保存に失敗しました');
     }
   };
+
+  if (isLoading) return <div className="p-4 text-slate-500">読み込み中...</div>;
 
   return (
     <div className="space-y-6 animate-fade-in relative">

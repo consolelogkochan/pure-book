@@ -33,6 +33,7 @@ const DAYS_OF_WEEK = [
 
 export const ResourceSettings = () => {
   const [staffs, setStaffs] = useState<Staff[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // 1. 初回マウント時にスタッフ（とスケジュール）を取得
   const fetchResources = async () => {
@@ -52,6 +53,8 @@ export const ResourceSettings = () => {
       setStaffs(formattedData);
     } catch (error) {
       console.error('リソースデータの取得に失敗しました', error);
+    } finally {
+      setIsLoading(false); 
     }
   };
 
@@ -88,6 +91,8 @@ export const ResourceSettings = () => {
       console.error(error);
     }
   };
+
+  if (isLoading) return <div className="p-4 text-slate-500">読み込み中...</div>;
 
   return (
     <div className="space-y-6 animate-fade-in relative grid grid-cols-1">

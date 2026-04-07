@@ -15,6 +15,7 @@ export const StaffSettings = () => {
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
 
   const [formData, setFormData] = useState({ name: '', role: '' });
+  const [isLoading, setIsLoading] = useState(true);
   
   // 一覧取得
   const fetchStaffs = async () => {
@@ -23,6 +24,8 @@ export const StaffSettings = () => {
       setStaffs(res.data);
     } catch (error) {
       console.error('スタッフの取得に失敗しました', error);
+    } finally {
+      setIsLoading(false); 
     }
   };
 
@@ -77,6 +80,7 @@ export const StaffSettings = () => {
     }
   };
 
+  if (isLoading) return <div className="p-4 text-slate-500">読み込み中...</div>;
 
   return (
     <div className="space-y-6 animate-fade-in relative">
