@@ -8,6 +8,10 @@ interface HoursSetting {
   close_time: string;
   regular_holidays: string[];
   terms_text: string;
+  booking_deadline_type: 'time_based' | 'date_based';
+  booking_deadline_hours: number;
+  booking_deadline_days: number;
+  booking_deadline_time: string;
 }
 
 // 曜日マスターデータ
@@ -27,6 +31,10 @@ export const HoursSettings = () => {
     close_time: '20:00',
     regular_holidays: [],
     terms_text: '',
+    booking_deadline_type: 'time_based',
+    booking_deadline_hours: 2,
+    booking_deadline_days: 1,
+    booking_deadline_time: '17:00',
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +49,10 @@ export const HoursSettings = () => {
         close_time: res.data.close_time.substring(0, 5),
         regular_holidays: res.data.regular_holidays || [],
         terms_text: res.data.terms_text || '',
+        booking_deadline_type: res.data.booking_deadline_type || 'time_based',
+        booking_deadline_hours: res.data.booking_deadline_hours ?? 2,
+        booking_deadline_days: res.data.booking_deadline_days ?? 1,
+        booking_deadline_time: res.data.booking_deadline_time ? res.data.booking_deadline_time.substring(0, 5) : '17:00',
       });
     } catch (error) {
       console.error('設定の取得に失敗しました', error);

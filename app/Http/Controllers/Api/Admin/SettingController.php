@@ -22,6 +22,11 @@ class SettingController extends Controller
                 'close_time' => '20:00:00',
                 'regular_holidays' => [],
                 'terms_text' => "当サロンのご利用にあたり、以下の規約にご同意ください。\n\n1. キャンセルについて...",
+                // ▼ 追加：初期値は「2時間前まで」にしておく
+                'booking_deadline_type' => 'time_based',
+                'booking_deadline_hours' => 2,
+                'booking_deadline_days' => 1,
+                'booking_deadline_time' => '17:00:00',
             ]
         );
 
@@ -36,6 +41,11 @@ class SettingController extends Controller
             'close_time' => 'required|date_format:H:i|after:open_time', // 閉店は開店より後かチェック
             'regular_holidays' => 'nullable|array',
             'terms_text' => 'nullable|string',
+            // ▼ 追加：バリデーション（安全確認）
+            'booking_deadline_type' => 'required|in:time_based,date_based',
+            'booking_deadline_hours' => 'nullable|integer|min:0',
+            'booking_deadline_days' => 'nullable|integer|min:0',
+            'booking_deadline_time' => 'nullable|date_format:H:i',
         ]);
 
         // 常に id=1 のデータを更新する

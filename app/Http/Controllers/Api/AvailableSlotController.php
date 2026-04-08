@@ -36,6 +36,10 @@ class AvailableSlotController extends Controller
                 'open_time' => '10:00:00',
                 'close_time' => '20:00:00',
                 'regular_holidays' => [],
+                'booking_deadline_type' => 'time_based',
+                'booking_deadline_hours' => 2,
+                'booking_deadline_days' => 1,
+                'booking_deadline_time' => '17:00:00',
             ]
         );
 
@@ -58,44 +62,72 @@ class AvailableSlotController extends Controller
             return response()->json([]); // その日出勤するスタッフが0人なら予約不可
         }
 
-        // 7.指定された日付の「すべての予約」をあらかじめ取得しておく（N+1問題対策）
+        $now = Carbon::now();
+        $isTimeBased = $settings->booking_deadline_type === 'time_based';
+
+        // 7.（日付ベース）の場合の【早期リターン】
+        if (! $isTimeBased) {
+            // 例：「1日前」の「17:00」という Carbonインスタンス（期限）を作る
+            $deadlineDays = $settings->booking_deadline_days ?? 1;
+            $deadlineTime = $settings->booking_deadline_time ?? '17:00:00';
+            
+            $bookingDeadline = $targetDate->copy()
+                ->subDays($deadlineDays)
+                ->setTimeFromTimeString($deadlineTime);
+            
+            // 「現在時刻」が「予約期限」を過ぎていたら、DB検索やループをやらずに空っぽを返す！
+            if ($now > $bookingDeadline) {
+                return response()->json([]);
+            }
+        }
+
+        // 8.指定された日付の「すべての予約」をあらかじめ取得しておく（N+1問題対策）
         $bookingsOnDate = Booking::whereDate('start_time', $targetDate->format('Y-m-d'))
             // キャンセルされた予約は計算から除外する
             ->where('status', '!=', 'cancelled')
             ->get();
 
-        // 8. 営業時間のセット（動的判定）
+        // 9. 営業時間のセット（動的判定）
         // DBから取得した "10:00:00" などの文字列を、ターゲット日の時間としてセットします
         $openTime = $targetDate->copy()->setTimeFromTimeString($settings->open_time);
         $closeTime = $targetDate->copy()->setTimeFromTimeString($settings->close_time);
 
-        // ※もし「今日」の予約なら、現在時刻より前の枠を消すための基準時間
-        $now = Carbon::now();
-
         $availableSlots = [];
         $currentTime = $openTime->copy();
 
-        // 9. 10:00から20:00まで、30分刻みでループを回す
+        // 10. 10:00から20:00まで、30分刻みでループを回す
         while ($currentTime < $closeTime) {
             // その枠で予約した場合の「終了予定時刻」を計算
             $endTime = $currentTime->copy()->addMinutes($menu->duration_minutes);
 
-            // 以下の2つの条件をクリアした場合のみ、枠として追加
-            // 条件A: 終了予定時刻が、営業終了（20:00）を超えていないか？
-            // 条件B: その枠の時間が、現在時刻を過ぎていないか？（過去の予約防止）
-            if ($endTime <= $closeTime && $currentTime > $now) {
-                // ▼ここから追加：重複チェック▼
-                // この枠（currentTime 〜 endTime）と被っている予約が何件あるか数える
-                $overlappingBookings = $bookingsOnDate->filter(function ($booking) use ($currentTime, $endTime) {
-                    // 「既存予約の開始時間が新規の終了時間より前」かつ「既存予約の終了時間が新規の開始時間より後」なら被っている
-                    return $booking->start_time < $endTime && $booking->end_time > $currentTime;
-                })->count();
 
-                // 被っている予約数が、スタッフの総数より「少ない」場合のみ、空き枠として追加
-                if ($overlappingBookings < $availableStaffCount) {
-                    $availableSlots[] = $currentTime->format('H:i');
+            // 条件A: 終了予定時刻が、営業終了を超えていないか？
+            if ($endTime <= $closeTime) {
+                
+                $isValidSlot = false;
+
+                // ▼追加：パターンA（時間ベース）のチェック▼
+                if ($isTimeBased) {
+                    $deadlineHours = $settings->booking_deadline_hours ?? 2;
+                    // その枠の開始時間から〇時間前を「期限」とする
+                    $slotDeadline = $currentTime->copy()->subHours($deadlineHours);
+                    // 「現在時刻」が「期限」より前（または同時）ならOK
+                    $isValidSlot = $now <= $slotDeadline;
+                } else {
+                    // パターンB（日付ベース）の場合は、ループに入る前にすでに期限チェックをパスしているので常にtrue
+                    $isValidSlot = true;
                 }
-                // ▲ここまで追加▲
+
+                // 期限チェックをクリアした枠のみ、重複予約のチェックに進む
+                if ($isValidSlot) {
+                    $overlappingBookings = $bookingsOnDate->filter(function ($booking) use ($currentTime, $endTime) {
+                        return $booking->start_time < $endTime && $booking->end_time > $currentTime;
+                    })->count();
+
+                    if ($overlappingBookings < $availableStaffCount) {
+                        $availableSlots[] = $currentTime->format('H:i');
+                    }
+                }
             }
 
             // 次の30分枠へ進める（10:00 -> 10:30）

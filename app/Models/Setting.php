@@ -14,6 +14,11 @@ class Setting extends Model
         'close_time',
         'regular_holidays',
         'terms_text',
+        // 予約締切ルール関連のカラム
+        'booking_deadline_type',
+        'booking_deadline_hours',
+        'booking_deadline_days',
+        'booking_deadline_time',
     ];
 
     protected function casts(): array
