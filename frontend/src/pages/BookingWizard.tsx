@@ -11,14 +11,22 @@ interface Menu {
   duration_minutes: number;
 }
 
+interface SurveyQuestion {
+  id: number;
+  question_text: string;
+  type: 'text' | 'radio' | 'checkbox';
+  options: string[];
+  is_required: boolean;
+}
+
 // フォームで入力してもらうデータの型定義
 interface BookingFormData {
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
   customer_memo?: string;
-  survey_is_first_time?: string; // アンケート1: 初めてか
-  survey_hear_about_us?: string; // アンケート2: 認知経路
+  // アンケートの項目は数が決まっていないため、どんなキー名(string)でも受け入れる設定にする
+  [key: string]: any;
 }
 
 export const BookingWizard = () => {
@@ -32,19 +40,33 @@ export const BookingWizard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false); // 送信中（ローディング）判定
   const [completedBookingRef, setCompletedBookingRef] = useState<string | null>(null); // 完了時の予約番号
 
+  const [surveyQuestions, setSurveyQuestions] = useState<SurveyQuestion[]>([]);
+
   // React Hook Form の準備
   const { register, handleSubmit, formState: { errors } } = useForm<BookingFormData>();
 
   useEffect(() => {
-    const fetchMenus = async () => {
+    // ▼ 修正：メニューとアンケートの両方を同時に取得する
+    const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost/api/menus');
-        setMenus(response.data.menus || response.data || []);
+        const [menusRes, surveyRes] = await Promise.all([
+          axios.get('http://localhost/api/menus'),
+          axios.get('http://localhost/api/survey-questions') // 追加
+        ]);
+        
+        setMenus(menusRes.data.menus || menusRes.data || []);
+        
+        const formattedSurvey = surveyRes.data.map((q: any) => ({
+          ...q,
+          options: q.options || []
+        }));
+        setSurveyQuestions(formattedSurvey);
+        
       } catch (error) {
-        console.error('メニューの取得に失敗しました', error);
+        console.error('データの取得に失敗しました', error);
       }
     };
-    fetchMenus();
+    fetchData();
   }, []);
 
   const handleDateChange = async (value: any) => {
@@ -84,6 +106,17 @@ export const BookingWizard = () => {
     const day = String(selectedDate.getDate()).padStart(2, '0');
     const startTime = `${year}-${month}-${day} ${selectedTime}:00`;
 
+    // ▼ 追加：動的アンケートの回答をキレイなオブジェクトにまとめる
+    const formattedSurveyResponses: Record<string, any> = {};
+    surveyQuestions.forEach(q => {
+      // フォームの入力データから "survey_1" などのキーを探す
+      const answer = data[`survey_${q.id}`];
+      if (answer) {
+        // 例: {"来店回数は？": "初めて"} という形にして保存する（後から見やすいため）
+        formattedSurveyResponses[q.question_text] = answer;
+      }
+    });
+
     // 2. 送信データ（Payload）の作成（※料金などは送らない！）
     const payload = {
       menu_id: selectedMenu.id,
@@ -92,10 +125,7 @@ export const BookingWizard = () => {
       customer_email: data.customer_email,
       customer_phone: data.customer_phone,
       customer_memo: data.customer_memo || null,
-      survey_responses: {
-        is_first_time: data.survey_is_first_time || '',
-        hear_about_us: data.survey_hear_about_us || '',
-      }
+      survey_responses: formattedSurveyResponses, // まとめたアンケート結果を送信
     };
 
     try {
@@ -264,43 +294,73 @@ export const BookingWizard = () => {
               />
             </div>
 
-            {/* ▼ ここから追加：アンケート ▼ */}
-            <div className="bg-white p-4 rounded border mt-4 shadow-sm">
-              <h4 className="font-bold text-gray-700 mb-3 border-b pb-2">ご来店に関するアンケート（任意）</h4>
-              
-              <div className="space-y-4">
-                {/* 質問1：ラジオボタン */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">当店のご利用は初めてですか？</label>
-                  <div className="flex gap-4 mt-1">
-                    <label className="flex items-center cursor-pointer">
-                      <input type="radio" value="yes" {...register('survey_is_first_time')} className="mr-2" />
-                      はい
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input type="radio" value="no" {...register('survey_is_first_time')} className="mr-2" />
-                      いいえ
-                    </label>
-                  </div>
-                </div>
+            {/* ▼ 修正：動的アンケートの描画ロジック ▼ */}
+            {surveyQuestions.length > 0 && (
+              <div className="bg-white p-5 rounded border mt-6 shadow-sm">
+                <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">店舗からのアンケート</h4>
+                
+                <div className="space-y-6">
+                  {surveyQuestions.map(q => (
+                    <div key={q.id}>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        {q.question_text}
+                        {q.is_required && <span className="text-red-500 ml-1">*</span>}
+                        {q.type === 'checkbox' && <span className="text-xs text-gray-400 font-normal ml-2">※複数選択可</span>}
+                      </label>
+                      
+                      {/* テキスト入力 */}
+                      {q.type === 'text' && (
+                        <input 
+                          type="text"
+                          {...register(`survey_${q.id}`, { required: q.is_required ? '必須項目です' : false })}
+                          className="w-full border rounded px-3 py-2 focus:outline-none focus:border-blue-500"
+                          placeholder="ご自由にご記入ください"
+                        />
+                      )}
 
-                {/* 質問2：セレクトボックス */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">何を見て当店をお知りになりましたか？</label>
-                  <select 
-                    {...register('survey_hear_about_us')}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:border-blue-500 bg-white"
-                  >
-                    <option value="">選択してください</option>
-                    <option value="web">Web検索</option>
-                    <option value="sns_instagram">Instagram</option>
-                    <option value="sns_twitter">X (Twitter)</option>
-                    <option value="friend">知人の紹介</option>
-                    <option value="other">その他</option>
-                  </select>
+                      {/* ラジオボタン */}
+                      {q.type === 'radio' && (
+                        <div className="flex flex-wrap gap-4">
+                          {q.options.map((opt, index) => (
+                            <label key={index} className="flex items-center cursor-pointer bg-slate-50 border rounded px-3 py-2 hover:bg-slate-100 transition">
+                              <input 
+                                type="radio" 
+                                value={opt} 
+                                {...register(`survey_${q.id}`, { required: q.is_required ? '必須項目です' : false })} 
+                                className="mr-2 text-blue-600 focus:ring-blue-500" 
+                              />
+                              <span className="text-sm">{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* チェックボックス */}
+                      {q.type === 'checkbox' && (
+                        <div className="flex flex-wrap gap-4">
+                          {q.options.map((opt, index) => (
+                            <label key={index} className="flex items-center cursor-pointer bg-slate-50 border rounded px-3 py-2 hover:bg-slate-100 transition">
+                              <input 
+                                type="checkbox" 
+                                value={opt} 
+                                {...register(`survey_${q.id}`, { required: q.is_required ? '必須項目です' : false })} 
+                                className="mr-2 rounded text-blue-600 focus:ring-blue-500" 
+                              />
+                              <span className="text-sm">{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* エラーメッセージ（必須なのに未入力の時） */}
+                      {errors[`survey_${q.id}`] && (
+                        <p className="text-red-500 text-xs mt-1">{(errors[`survey_${q.id}`] as any).message}</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
             {/* ▲ ここまで追加 ▲ */}
 
             {/* 確定ボタン */}

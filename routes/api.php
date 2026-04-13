@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\Admin\MenuController as AdminMenuController;
 use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\Api\Admin\ResourceController;
 use App\Http\Controllers\Api\Admin\SettingController;
+use App\Http\Controllers\Api\Admin\SurveyQuestionController;
+use App\Http\Controllers\Api\SurveyQuestionController as PublicSurveyQuestionController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -20,6 +22,8 @@ Route::get('/menus', [MenuController::class, 'index']);
 Route::get('/staffs', [StaffController::class, 'index']);
 
 Route::get('/available-slots', [AvailableSlotController::class, 'index']);
+
+Route::get('/survey-questions', [App\Http\Controllers\Api\SurveyQuestionController::class, 'index']);
 
 // ▼ここを追加（データの保存なので POST メソッドを使います）▼
 Route::post('/bookings', [BookingController::class, 'store']);
@@ -51,4 +55,8 @@ Route::prefix('admin')->group(function () {
     // 店舗設定（常に1つのデータを扱うので、URLはシンプルに）
     Route::get('/settings', [SettingController::class, 'show']);
     Route::put('/settings', [SettingController::class, 'update']);
+
+    // アンケート管理
+    Route::get('/survey-questions', [SurveyQuestionController::class, 'index']);
+    Route::post('/survey-questions', [SurveyQuestionController::class, 'store']);
 });
