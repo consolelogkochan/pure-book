@@ -73,9 +73,9 @@ export const SurveySettings = () => {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
-      <div className="flex justify-between items-center border-b pb-2">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-4 sm:gap-0">
         <h2 className="text-xl font-bold text-slate-800">予約時アンケート設定</h2>
-        <Button onClick={handleSave} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-6">保存する</Button>
+        <Button onClick={handleSave} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-4 text-sm w-full sm:w-auto">保存する</Button>
       </div>
 
       <div className="space-y-4">

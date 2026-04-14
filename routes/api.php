@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Admin\ResourceController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\SurveyQuestionController;
 use App\Http\Controllers\Api\SurveyQuestionController as PublicSurveyQuestionController;
+use App\Http\Controllers\Api\Admin\BookingController as AdminBookingController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -59,4 +60,7 @@ Route::prefix('admin')->group(function () {
     // アンケート管理
     Route::get('/survey-questions', [SurveyQuestionController::class, 'index']);
     Route::post('/survey-questions', [SurveyQuestionController::class, 'store']);
+
+    // 予約管理（予約の一覧を取得するAPI）
+    Route::get('/bookings', [App\Http\Controllers\Api\Admin\BookingController::class, 'index']);
 });
