@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from '../layouts/AdminLayout';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -12,21 +12,36 @@ const dayMap: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
 };
 
+interface Menu {
+  id: number;
+  name: string;
+  duration_minutes: number;
+}
+
 export const AdminCalendar = () => {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
+  const [menus, setMenus] = useState<Menu[]>([]);
+
+  // ▼追加：カレンダー本体を操作するためのリモコン（Ref）
+  const calendarRef = useRef<FullCalendar>(null);
 
   // 1. 初回マウント時に「店舗設定（営業時間・定休日）」を取得する
   useEffect(() => {
-    const fetchSettings = async () => {
+    // 店舗設定とメニュー一覧を同時に取得する
+    const fetchData = async () => {
       try {
-        const res = await axios.get('http://localhost/api/admin/settings');
-        setStoreSettings(res.data);
+        const [settingsRes, menusRes] = await Promise.all([
+          axios.get('http://localhost/api/admin/settings'),
+          axios.get('http://localhost/api/menus') // お客様用APIを流用
+        ]);
+        setStoreSettings(settingsRes.data);
+        setMenus(menusRes.data.menus || menusRes.data || []);
       } catch (error) {
-        console.error('設定の取得に失敗しました', error);
+        console.error('データの取得に失敗しました', error);
       }
     };
-    fetchSettings();
+    fetchData();
   }, []);
 
   // 2. FullCalendarが自動で予約データを取得するための関数
@@ -57,6 +72,40 @@ export const AdminCalendar = () => {
     }
   };
 
+  // ▼追加：予約の更新（編集・キャンセル）処理
+  const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // 画面の無駄なリロードを防ぐ
+    
+    // フォームに入力されたデータを集める
+    const formData = new FormData(e.currentTarget);
+    const datePart = formData.get('start_date_only');
+    const timePart = formData.get('start_time_only');
+    
+    const payload = {
+      start_time: `${datePart} ${timePart}:00`,
+      menu_id: Number(formData.get('menu_id')),
+      status: formData.get('status'),
+      customer_memo: formData.get('customer_memo'),
+    };
+
+    try {
+      await axios.put(`http://localhost/api/admin/bookings/${selectedBooking.id}`, payload);
+      alert('予約情報を更新しました！');
+      setSelectedBooking(null); // ドロワーを閉じる
+      
+      // ▼追加：カレンダーのデータを最新状態に再取得（リフレッシュ）させる
+      if (calendarRef.current) {
+        calendarRef.current.getApi().refetchEvents();
+      }
+    } catch (error: any) {
+      if (error.response && error.response.status === 409) {
+        alert(error.response.data.message); // 「この時間は予約枠が埋まっています」を表示
+      } else {
+        alert('更新に失敗しました。');
+      }
+    }
+  };
+
   // 定休日の配列を数値の配列に変換
   const hiddenDays = storeSettings?.regular_holidays?.map((day: string) => dayMap[day]) || [];
 
@@ -71,6 +120,7 @@ export const AdminCalendar = () => {
             // ▼追加：TypeScriptの誤検知エラーを無視させるおまじない
             // @ts-expect-error
             <FullCalendar
+              ref={calendarRef} // 👈 カレンダーにリモコンをセット
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
               headerToolbar={{
@@ -123,82 +173,126 @@ export const AdminCalendar = () => {
               ✕ 閉じる
             </button>
           </div>
-
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {!selectedBooking?.isNew && (
-              <div className="bg-slate-100 p-3 rounded text-sm text-slate-600 font-mono flex justify-between items-center">
-                <span>予約番号: {selectedBooking?.booking_reference}</span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${selectedBooking?.status === 'cancelled' ? 'bg-slate-200 text-slate-600' : 'bg-green-100 text-green-700'}`}>
-                  {selectedBooking?.status === 'cancelled' ? 'キャンセル済' : '予約確定'}
-                </span>
-              </div>
-            )}
-
-            {/* お客様情報 */}
-            <div className="bg-white border rounded-lg p-4 space-y-3">
-              <h4 className="font-bold text-slate-700 border-b pb-2">お客様情報</h4>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">お名前</label>
-                <input type="text" className="w-full border rounded px-3 py-2 font-bold" defaultValue={selectedBooking?.customer_name || ''} readOnly />
-              </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">電話番号</label>
-                  <input type="text" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_phone || ''} readOnly />
+          {/* ▼変更：全体を <form> で囲み、onSubmit に関数を紐付ける */}
+          <form onSubmit={handleUpdate} className="flex flex-col h-full overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {!selectedBooking?.isNew && (
+                <div className="bg-slate-100 p-3 rounded text-sm text-slate-600 font-mono flex justify-between items-center">
+                  <span>予約番号: {selectedBooking?.booking_reference}</span>
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${selectedBooking?.status === 'cancelled' ? 'bg-slate-200 text-slate-600' : 'bg-green-100 text-green-700'}`}>
+                    {selectedBooking?.status === 'cancelled' ? 'キャンセル済' : '予約確定'}
+                  </span>
                 </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">メール</label>
-                  <input type="text" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_email || ''} readOnly />
+              )}
+              
+              {/* お客様情報（変更なし、readOnlyのまま） */}
+              <div className="bg-white border rounded-lg p-4 space-y-3">
+                <h4 className="font-bold text-slate-700 border-b pb-2">お客様情報</h4>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">お名前</label>
+                  <input type="text" className="w-full border rounded px-3 py-2 font-bold" defaultValue={selectedBooking?.customer_name || ''} readOnly />
                 </div>
-              </div>
-            </div>
-
-            {/* 予約内容 */}
-            <div className="bg-white border rounded-lg p-4 space-y-3">
-              <h4 className="font-bold text-slate-700 border-b pb-2">予約内容</h4>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">メニュー</label>
-                <input type="text" className="w-full border rounded px-3 py-2 font-bold" defaultValue={selectedBooking?.menu?.name || ''} readOnly />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">担当スタッフ</label>
-                <input type="text" className="w-full border rounded px-3 py-2" defaultValue={selectedBooking?.staff?.name || ''} readOnly />
-              </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">開始時間</label>
-                  <input type="text" className="w-full border rounded px-3 py-2" defaultValue={selectedBooking?.start_time ? new Date(selectedBooking.start_time).toLocaleString('ja-JP') : ''} readOnly />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">終了時間</label>
-                  <input type="text" className="w-full border rounded px-3 py-2" defaultValue={selectedBooking?.end_time ? new Date(selectedBooking.end_time).toLocaleString('ja-JP') : ''} readOnly />
-                </div>
-              </div>
-            </div>
-
-            {/* アンケート結果の表示 */}
-            {selectedBooking?.survey_responses && Object.keys(selectedBooking.survey_responses).length > 0 && (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 space-y-3">
-                <h4 className="font-bold text-blue-800 border-b border-blue-200 pb-2">事前アンケート回答</h4>
-                {Object.entries(selectedBooking.survey_responses).map(([question, answer], index) => (
-                  <div key={index}>
-                    <p className="text-xs text-blue-600 mb-1">{question}</p>
-                    <p className="text-sm font-bold text-slate-800 bg-white px-2 py-1 rounded">{String(answer)}</p>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-500 mb-1">電話番号</label>
+                    <input type="text" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_phone || ''} readOnly />
                   </div>
-                ))}
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-500 mb-1">メール</label>
+                    <input type="text" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_email || ''} readOnly />
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* 備考欄 */}
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">お客様からのご要望・メモ</label>
-              <textarea 
-                className="w-full border rounded px-3 py-2 h-20 resize-none bg-slate-50" 
-                defaultValue={selectedBooking?.customer_memo || 'なし'}
-                readOnly
-              />
+              {/* 予約内容（編集可能にする） */}
+              <div className="bg-white border border-blue-200 rounded-lg p-4 space-y-3">
+                <h4 className="font-bold text-blue-700 border-b border-blue-100 pb-2 flex items-center">
+                   予約内容の編集
+                </h4>
+                
+                {/* ▼変更：メニューをセレクトボックスにする */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">メニュー</label>
+                  <select 
+                    name="menu_id" 
+                    className="w-full border border-slate-300 rounded px-3 py-2 bg-white outline-none focus:border-blue-500" 
+                    defaultValue={selectedBooking?.menu_id || ''}
+                    required
+                  >
+                    {menus.map(menu => (
+                      <option key={menu.id} value={menu.id}>
+                        {menu.name} ({menu.duration_minutes}分)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-600 mb-1">日付</label>
+                    <input 
+                      name="start_date_only" 
+                      type="date" 
+                      className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500" 
+                      defaultValue={selectedBooking?.start_time ? (selectedBooking.start_time.split('T')[0] || selectedBooking.start_time.split(' ')[0]) : ''} 
+                      required 
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-600 mb-1">開始時間</label>
+                    <input 
+                      name="start_time_only" 
+                      type="time" 
+                      className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500" 
+                      defaultValue={selectedBooking?.start_time ? new Date(selectedBooking.start_time).toTimeString().substring(0, 5) : ''} 
+                      required 
+                    />
+                  </div>
+                  {/* 終了時間はバックエンドで自動計算されるため、非表示またはReadOnly表示で良いですが、今回は元のUIに合わせてテキスト表示のみにしておきます */}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">ステータス変更</label>
+                  <select name="status" className="w-full border border-slate-300 rounded px-3 py-2 bg-white outline-none focus:border-blue-500" defaultValue={selectedBooking?.status || 'confirmed'}>
+                    <option value="confirmed">予約確定（通常）</option>
+                    <option value="cancelled">キャンセル</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* アンケート結果の表示 */}
+              {selectedBooking?.survey_responses && Object.keys(selectedBooking.survey_responses).length > 0 && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 space-y-3">
+                  <h4 className="font-bold text-blue-800 border-b border-blue-200 pb-2">事前アンケート回答</h4>
+                  {Object.entries(selectedBooking.survey_responses).map(([question, answer], index) => (
+                    <div key={index}>
+                      <p className="text-xs text-blue-600 mb-1">{question}</p>
+                      <p className="text-sm font-bold text-slate-800 bg-white px-2 py-1 rounded">{String(answer)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">店舗用メモ</label>
+                <textarea 
+                  name="customer_memo"
+                  className="w-full border rounded px-3 py-2 h-20 resize-none outline-none focus:border-blue-500" 
+                  defaultValue={selectedBooking?.customer_memo || ''}
+                  placeholder="お客様のご要望や、店舗側の引き継ぎ事項"
+                />
+              </div>
+
             </div>
-          </div>
+
+            {/* ボタンエリア（type="submit" に変更） */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3">
+              <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition shadow-sm">
+                変更を保存する
+              </button>
+            </div>
+
+          </form>
 
         </div>
       </div>

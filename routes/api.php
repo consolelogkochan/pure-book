@@ -63,4 +63,7 @@ Route::prefix('admin')->group(function () {
 
     // 予約管理（予約の一覧を取得するAPI）
     Route::get('/bookings', [App\Http\Controllers\Api\Admin\BookingController::class, 'index']);
+
+    // 予約管理（予約の更新API） 
+    Route::put('/bookings/{id}', [App\Http\Controllers\Api\Admin\BookingController::class, 'update']);
 });
