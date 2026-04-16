@@ -4,7 +4,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventClickArg } from '@fullcalendar/core';
+import type { EventClickArg, DateSelectArg } from '@fullcalendar/core';
 import axios from 'axios';
 
 // 曜日の文字列をFullCalendar用の数値(0=日曜日)に変換するマップ
@@ -85,12 +85,20 @@ export const AdminCalendar = () => {
       start_time: `${datePart} ${timePart}:00`,
       menu_id: Number(formData.get('menu_id')),
       status: formData.get('status'),
+      customer_name: formData.get('customer_name'), // 新規用に取得
+      customer_phone: formData.get('customer_phone'), // 新規用に取得
+      customer_email: formData.get('customer_email'), // 新規用に取得
       customer_memo: formData.get('customer_memo'),
     };
 
     try {
-      await axios.put(`http://localhost/api/admin/bookings/${selectedBooking.id}`, payload);
-      alert('予約情報を更新しました！');
+      if (selectedBooking.isNew) {
+        await axios.post('http://localhost/api/admin/bookings', payload);
+        alert('新規予約を登録しました！');
+      } else {
+        await axios.put(`http://localhost/api/admin/bookings/${selectedBooking.id}`, payload);
+        alert('予約情報を更新しました！');
+      }
       setSelectedBooking(null); // ドロワーを閉じる
       
       // ▼追加：カレンダーのデータを最新状態に再取得（リフレッシュ）させる
@@ -134,6 +142,14 @@ export const AdminCalendar = () => {
               slotMaxTime={storeSettings.close_time} // 営業終了時間
               hiddenDays={hiddenDays} // 定休日はカレンダーから完全に消す
               events={fetchEvents} // データの取得関数をセット
+              selectable={true} // カレンダーの空き枠を選択可能にする
+              // 空き枠が選択（クリック）されたら、isNew: true でドロワーを開く
+              select={(info: DateSelectArg) => {
+                setSelectedBooking({
+                  isNew: true,
+                  start_time: info.startStr, // クリックした日時を初期値にする
+                });
+              }}
               eventClick={(info: EventClickArg) => {
                 // イベントをクリックしたら、保持していた元データ(extendedProps)をStateに入れる
                 setSelectedBooking({
@@ -190,16 +206,16 @@ export const AdminCalendar = () => {
                 <h4 className="font-bold text-slate-700 border-b pb-2">お客様情報</h4>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">お名前</label>
-                  <input type="text" className="w-full border rounded px-3 py-2 font-bold" defaultValue={selectedBooking?.customer_name || ''} readOnly />
+                  <input name="customer_name" type="text" className="w-full border rounded px-3 py-2 font-bold" defaultValue={selectedBooking?.customer_name || ''} readOnly={!selectedBooking?.isNew} required={selectedBooking?.isNew} />
                 </div>
                 <div className="flex gap-4">
                   <div className="flex-1">
                     <label className="block text-xs text-slate-500 mb-1">電話番号</label>
-                    <input type="text" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_phone || ''} readOnly />
+                    <input name="customer_phone" type="text" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_phone || ''} readOnly={!selectedBooking?.isNew} required={selectedBooking?.isNew} />
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs text-slate-500 mb-1">メール</label>
-                    <input type="text" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_email || ''} readOnly />
+                    <input name="customer_email" type="email" className="w-full border rounded px-3 py-2 text-sm" defaultValue={selectedBooking?.customer_email || ''} readOnly={!selectedBooking?.isNew} required={selectedBooking?.isNew} />
                   </div>
                 </div>
               </div>
