@@ -10,6 +10,7 @@ use App\Models\Setting;
 use Illuminate\Support\Carbon;
 use App\Models\Staff;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Response;
 
 class BookingController extends Controller
 {
@@ -32,7 +33,7 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
-        // [C] フロントから送られてきた入力値の形式チェック
+        //  フロントから送られてきた入力値の形式チェック
         $validated = $request->validate([
             'start_time' => 'required|date|after:now',
             'menu_id' => 'required|exists:menus,id',
@@ -43,7 +44,7 @@ class BookingController extends Controller
             'customer_memo' => 'nullable|string',
         ]);
 
-        // [D] メニューの所要時間から終了時刻を計算
+        //  メニューの所要時間から終了時刻を計算
         $newStartTime = Carbon::parse($validated['start_time']);
         $menu = Menu::findOrFail($validated['menu_id']);
         $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
@@ -56,7 +57,7 @@ class BookingController extends Controller
             return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
         }
 
-        // [A] 重複・空き枠のチェック
+        //  重複・空き枠のチェック
         // 指定曜日の出勤スタッフ一覧を取得（誰に割り当てるかを決めるため、count ではなく get にします）
         $availableStaffs = Staff::where('is_active', true)
             ->whereHas('schedule', function ($q) use ($dayOfWeek) {
@@ -78,10 +79,10 @@ class BookingController extends Controller
             return response()->json(['message' => 'この時間は予約枠が埋まっています。'], 409);
         }
 
-        // [E] 予約番号の生成（BKG-ランダム大文字英数字8桁）
+        //  予約番号の生成（BKG-ランダム大文字英数字8桁）
         $bookingReference = 'BKG-' . strtoupper(Str::random(8));
 
-        // [B] DBへの保存処理
+        //  DBへの保存処理
         $booking = Booking::create([
             'booking_reference' => $bookingReference,
             'user_id' => null, // 管理者からの追加はゲスト扱い（会員紐付けなし）
@@ -160,5 +161,62 @@ class BookingController extends Controller
         ]);
 
         return response()->json(['message' => '予約を更新しました', 'booking' => $booking]);
+    }
+
+    // 一覧検索API
+    public function search(Request $request)
+    {
+        // 💡 スコープを活用！これだけで全条件の絞り込みが完了します
+        $bookings = Booking::with(['menu', 'staff'])
+            ->searchFilter($request->all())
+            ->orderBy('start_time', 'desc')
+            ->get();
+
+        return response()->json($bookings);
+    }
+
+    // CSVダウンロードAPI
+    public function exportCsv(Request $request)
+    {
+        // 検索と同じスコープを使って対象データを取得
+        $bookings = Booking::with(['menu', 'staff'])
+            ->searchFilter($request->all())
+            ->orderBy('start_time', 'desc')
+            ->get();
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=bookings.csv",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use($bookings) {
+            $file = fopen('php://output', 'w');
+            // Excelで文字化けしないようにBOM（特殊な目印）をつける
+            fputs($file, "\xEF\xBB\xBF");
+            
+            // CSVの1行目（ヘッダー）
+            fputcsv($file, ['予約番号', '予約日時', 'お名前', '電話番号', 'メール', 'メニュー', 'ステータス', '店舗メモ']);
+
+            // データ行
+            foreach ($bookings as $booking) {
+                fputcsv($file, [
+                    $booking->booking_reference,
+                    $booking->start_time->format('Y-m-d H:i'),
+                    $booking->customer_name,
+                    $booking->customer_phone,
+                    $booking->customer_email,
+                    $booking->menu ? $booking->menu->name : '',
+                    $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
+                    $booking->customer_memo
+                ]);
+            }
+            fclose($file);
+        };
+
+        // 大量データでもメモリを圧迫しない stream ダウンロード方式
+        return response()->stream($callback, 200, $headers);
     }
 }

@@ -61,6 +61,10 @@ Route::prefix('admin')->group(function () {
     Route::get('/survey-questions', [SurveyQuestionController::class, 'index']);
     Route::post('/survey-questions', [SurveyQuestionController::class, 'store']);
 
+    // 予約検索・CSVダウンロードAPI
+    Route::get('/bookings/search', [App\Http\Controllers\Api\Admin\BookingController::class, 'search']);
+    Route::get('/bookings/csv', [App\Http\Controllers\Api\Admin\BookingController::class, 'exportCsv']);
+
     // 予約管理（予約の一覧を取得するAPI）
     Route::get('/bookings', [App\Http\Controllers\Api\Admin\BookingController::class, 'index']);
 

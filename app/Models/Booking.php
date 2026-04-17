@@ -42,4 +42,21 @@ class Booking extends Model
     {
         return $this->belongsTo(Menu::class);
     }
+
+    // 検索用のローカルスコープ
+    // 💡 when($値, function($q, $値) {}) は「もし$値が存在したら、この条件を追加する」というLaravelの超便利メソッドです
+    public function scopeSearchFilter($query, array $filters)
+    {
+        $query->when($filters['date'] ?? null, function ($q, $date) {
+            $q->whereDate('start_time', $date);
+        })->when($filters['name'] ?? null, function ($q, $name) {
+            $q->where('customer_name', 'like', '%' . $name . '%');
+        })->when($filters['reference'] ?? null, function ($q, $reference) {
+            $q->where('booking_reference', 'like', '%' . $reference . '%');
+        })->when($filters['menu'] ?? null, function ($q, $menuId) {
+            $q->where('menu_id', $menuId);
+        })->when($filters['status'] ?? null, function ($q, $status) {
+            $q->where('status', $status);
+        });
+    }
 }

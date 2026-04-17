@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdminLayout } from '../layouts/AdminLayout';
+import axios from 'axios';
 
-// 検索フォームの型定義
 interface SearchFormInputs {
   date: string;
   name: string;
@@ -11,34 +12,111 @@ interface SearchFormInputs {
 }
 
 export const AdminSearch = () => {
-  // react-hook-formを導入！
-  const { register, handleSubmit } = useForm<SearchFormInputs>();
+  const { register, handleSubmit, getValues } = useForm<SearchFormInputs>();
+  
+  // State管理
+  const [results, setResults] = useState<any[]>([]);
+  const [menus, setMenus] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 検索ボタンが押された時の処理
-  const onSubmit = (data: SearchFormInputs) => {
-    // 今回はガワの作成なので、コンソールに出力するだけ
-    console.log('検索実行（APIへ送信するデータ）:', data);
-    alert('検索を実行しました（コンソールを確認してください）');
+  // 初回マウント時にメニュー一覧と、初期の予約一覧を取得
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const menusRes = await axios.get('http://localhost/api/menus');
+        setMenus(menusRes.data.menus || menusRes.data || []);
+        
+        // 初期状態（条件なし）で検索を実行しておく
+        fetchSearchResults({});
+      } catch (error) {
+        console.error('初期データの取得に失敗しました', error);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  // 検索APIを叩いて結果をStateに入れる関数
+  const fetchSearchResults = async (params: any) => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get('http://localhost/api/admin/bookings/search', { params });
+      setResults(res.data);
+    } catch (error) {
+      alert('検索に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // 一覧表示用のモックデータ（指定された全9項目）
-  const mockResults = [
-    { id: 1, ref: 'BKG-A1B2C', date: '2023-11-20 10:00', name: '山田 太郎', phone: '090-1234-5678', email: 'yamada@example.com', menu: 'カット＆カラー', price: '¥12,000', survey: '静かに過ごしたい', status: 'confirmed' },
-    { id: 2, ref: 'BKG-D3E4F', date: '2023-11-21 14:00', name: '佐藤 花子', phone: '080-9876-5432', email: 'sato@example.com', menu: 'パーマ', price: '¥15,000', survey: '髪の痛みが気になる', status: 'confirmed' },
-    { id: 3, ref: 'BKG-G5H6I', date: '2023-11-22 11:00', name: '鈴木 一郎', phone: '070-1111-2222', email: 'suzuki@example.com', menu: 'カット', price: '¥5,000', survey: '特になし', status: 'cancelled' },
-  ];
+  const onSubmit = (data: SearchFormInputs) => {
+    fetchSearchResults(data);
+  };
+
+  // 「CSVダウンロードの魔法」の実装
+  const handleDownloadCsv = async () => {
+    // 現在の検索条件を取得
+    const currentParams = getValues();
+    
+    try {
+      // responseType: 'blob' が超重要！バイナリデータとして受け取るようAxiosに指示
+      const response = await axios.get('http://localhost/api/admin/bookings/csv', {
+        params: currentParams,
+        responseType: 'blob',
+      });
+
+      // 1. Blob化（今回はAxiosがやってくれているのでそのまま使う）
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      // 2. 一時URLの発行
+      const url = window.URL.createObjectURL(blob);
+      // 3. 見えないリンクを作ってクリック！
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `予約一覧_${new Date().getTime()}.csv`); // ファイル名
+      document.body.appendChild(link);
+      link.click();
+      
+      // 終わったらゴミ掃除（メモリ解放）
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      alert('CSVのダウンロードに失敗しました');
+    }
+  };
+
+  // 一覧画面から直接ステータスを変更する機能
+  const handleStatusChange = async (id: number, newStatus: string) => {
+    try {
+      // ここは既存の update APIを使い回せますが、簡略化のため status だけ送るパッチ的処理を想定
+      // 今回はCard22で作った update メソッドだと他項目も必須になるため、
+      // 実際の実装ではステータス変更専用のAPI（PATCH /bookings/{id}/status）を作るのがベストです。
+      // 今回はUIの変更確認のみに留めます。
+      alert(`※簡易実装: 予約ID [${id}] のステータスを ${newStatus} に変更します。(API連携は省略)`);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         
-        {/* ==========================================
-            上部：検索フィルターUI (react-hook-form使用)
-            ========================================== */}
+        {/* --- 検索フィルター --- */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">予約検索</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-slate-800">予約検索</h2>
+            {/* CSVダウンロードボタン */}
+            <button 
+              type="button" 
+              onClick={handleDownloadCsv}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              CSV出力
+            </button>
+          </div>
           
-          <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+          <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">利用日</label>
               <input type="date" {...register('date')} className="w-full border border-slate-300 rounded px-3 py-2" />
@@ -51,27 +129,33 @@ export const AdminSearch = () => {
               <label className="block text-sm font-bold text-slate-700 mb-1">予約番号</label>
               <input type="text" {...register('reference')} placeholder="例: BKG-..." className="w-full border border-slate-300 rounded px-3 py-2" />
             </div>
+            {/* ▼ 変更：メニューを動的に取得したものにする */}
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">メニュー</label>
               <select {...register('menu')} className="w-full border border-slate-300 rounded px-3 py-2 bg-white">
                 <option value="">すべて</option>
-                <option value="cut">カット</option>
-                <option value="color">カラー</option>
+                {menus.map(menu => (
+                  <option key={menu.id} value={menu.id}>{menu.name}</option>
+                ))}
               </select>
             </div>
-            <button type="submit" className="w-full bg-slate-800 text-white font-bold py-2 px-4 rounded hover:bg-slate-700 transition">
-              検索する
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">ステータス</label>
+              <select {...register('status')} className="w-full border border-slate-300 rounded px-3 py-2 bg-white">
+                <option value="">すべて</option>
+                <option value="confirmed">予約確定</option>
+                <option value="cancelled">キャンセル</option>
+              </select>
+            </div>
+            <button type="submit" disabled={isLoading} className="w-full bg-slate-800 text-white font-bold py-2 px-4 rounded hover:bg-slate-700 transition disabled:opacity-50">
+              {isLoading ? '検索中...' : '検索する'}
             </button>
           </form>
         </div>
 
-        {/* ==========================================
-            下部：検索結果一覧テーブルUI
-            ========================================== */}
+        {/* --- 検索結果一覧 --- */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {/* 横幅がはみ出た時だけスクロールさせる最強のクラス */}
           <div className="overflow-x-auto">
-            {/* whitespace-nowrap で文字の自動改行を防ぎ、表をきれいに保つ */}
             <table className="w-full text-left border-collapse whitespace-nowrap min-w-300">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
@@ -79,40 +163,44 @@ export const AdminSearch = () => {
                   <th className="p-4 font-bold text-sm text-slate-600">予約日時</th>
                   <th className="p-4 font-bold text-sm text-slate-600">お名前</th>
                   <th className="p-4 font-bold text-sm text-slate-600">電話番号</th>
-                  <th className="p-4 font-bold text-sm text-slate-600">メールアドレス</th>
                   <th className="p-4 font-bold text-sm text-slate-600">メニュー</th>
-                  <th className="p-4 font-bold text-sm text-slate-600">料金</th>
-                  <th className="p-4 font-bold text-sm text-slate-600">アンケート回答</th>
-                  <th className="p-4 font-bold text-sm text-slate-600">ステータス（操作）</th>
+                  <th className="p-4 font-bold text-sm text-slate-600">担当</th>
+                  <th className="p-4 font-bold text-sm text-slate-600">ステータス</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {mockResults.map((result) => (
-                  <tr key={result.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 font-mono text-sm text-slate-600">{result.ref}</td>
-                    <td className="p-4 text-sm font-bold text-slate-800">{result.date}</td>
-                    <td className="p-4 text-sm text-slate-800">{result.name}</td>
-                    <td className="p-4 text-sm text-slate-600">{result.phone}</td>
-                    <td className="p-4 text-sm text-slate-600">{result.email}</td>
-                    <td className="p-4 text-sm text-slate-800">{result.menu}</td>
-                    <td className="p-4 text-sm text-slate-800 font-bold">{result.price}</td>
-                    <td className="p-4 text-sm text-slate-500 max-w-xs truncate" title={result.survey}>
-                      {result.survey}
-                    </td>
-                    <td className="p-4">
-                      {/*  一覧から直接ステータスを変更できるUI */}
-                      <select 
-                        defaultValue={result.status}
-                        className={`text-sm font-bold border rounded px-2 py-1 ${
-                          result.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-300' : 'bg-blue-50 text-blue-700 border-blue-200'
-                        }`}
-                      >
-                        <option value="confirmed">予約確定</option>
-                        <option value="cancelled">キャンセル</option>
-                      </select>
+                {results.length > 0 ? (
+                  results.map((result) => (
+                    <tr key={result.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-4 font-mono text-sm text-slate-600">{result.booking_reference}</td>
+                      <td className="p-4 text-sm font-bold text-slate-800">
+                        {new Date(result.start_time).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="p-4 text-sm text-slate-800">{result.customer_name}</td>
+                      <td className="p-4 text-sm text-slate-600">{result.customer_phone}</td>
+                      <td className="p-4 text-sm text-slate-800">{result.menu?.name}</td>
+                      <td className="p-4 text-sm text-slate-800">{result.staff?.name || '未定'}</td>
+                      <td className="p-4">
+                        <select 
+                          value={result.status}
+                          onChange={(e) => handleStatusChange(result.id, e.target.value)}
+                          className={`text-sm font-bold border rounded px-2 py-1 outline-none ${
+                            result.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-300' : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}
+                        >
+                          <option value="confirmed">予約確定</option>
+                          <option value="cancelled">キャンセル</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                      {isLoading ? '読み込み中...' : '条件に一致する予約が見つかりませんでした。'}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
