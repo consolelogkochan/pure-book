@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
 use App\Models\Staff;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
@@ -44,61 +45,65 @@ class BookingController extends Controller
             'customer_memo' => 'nullable|string',
         ]);
 
-        //  メニューの所要時間から終了時刻を計算
-        $newStartTime = Carbon::parse($validated['start_time']);
-        $menu = Menu::findOrFail($validated['menu_id']);
-        $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
+        return DB::transaction(function () use ($validated) {
+            //  メニューの所要時間から終了時刻を計算
+            $newStartTime = Carbon::parse($validated['start_time']);
+            $menu = Menu::findOrFail($validated['menu_id']);
+            $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
 
-        $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
-        $settings = Setting::first();
-        $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
-        
-        if (in_array($dayOfWeek, $regularHolidays)) {
-            return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
-        }
+            $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
+            $settings = Setting::first();
+            $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
+            
+            if (in_array($dayOfWeek, $regularHolidays)) {
+                return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
+            }
 
-        //  重複・空き枠のチェック
-        // 指定曜日の出勤スタッフ一覧を取得（誰に割り当てるかを決めるため、count ではなく get にします）
-        $availableStaffs = Staff::where('is_active', true)
-            ->whereHas('schedule', function ($q) use ($dayOfWeek) {
-                $q->where($dayOfWeek, true);
-            })->get();
+            //  重複・空き枠のチェック
+            // 指定曜日の出勤スタッフ一覧を取得（誰に割り当てるかを決めるため、count ではなく get にします）
+            $availableStaffs = Staff::where('is_active', true)
+                ->whereHas('schedule', function ($q) use ($dayOfWeek) {
+                    $q->where($dayOfWeek, true);
+                })
+                ->lockForUpdate()
+                ->get();
 
-        if ($availableStaffs->isEmpty()) {
-             return response()->json(['message' => '指定された曜日に出勤するスタッフがいません。'], 409);
-        }
+            if ($availableStaffs->isEmpty()) {
+                return response()->json(['message' => '指定された曜日に出勤するスタッフがいません。'], 409);
+            }
 
-        // 既存の予約（キャンセル以外）で被っているものを数える（新規なので自分自身の除外は不要）
-        $overlappingBookings = Booking::where('status', '!=', 'cancelled')
-            ->where(function ($query) use ($newStartTime, $newEndTime) {
-                $query->where('start_time', '<', $newEndTime)
-                      ->where('end_time', '>', $newStartTime);
-            })->count();
+            // 既存の予約（キャンセル以外）で被っているものを数える（新規なので自分自身の除外は不要）
+            $overlappingBookings = Booking::where('status', '!=', 'cancelled')
+                ->where(function ($query) use ($newStartTime, $newEndTime) {
+                    $query->where('start_time', '<', $newEndTime)
+                        ->where('end_time', '>', $newStartTime);
+                })->count();
 
-        if ($overlappingBookings >= $availableStaffs->count()) {
-            return response()->json(['message' => 'この時間は予約枠が埋まっています。'], 409);
-        }
+            if ($overlappingBookings >= $availableStaffs->count()) {
+                return response()->json(['message' => 'この時間は予約枠が埋まっています。'], 409);
+            }
 
-        //  予約番号の生成（BKG-ランダム大文字英数字8桁）
-        $bookingReference = 'BKG-' . strtoupper(Str::random(8));
+            //  予約番号の生成（BKG-ランダム大文字英数字8桁）
+            $bookingReference = 'BKG-' . strtoupper(Str::random(8));
 
-        //  DBへの保存処理
-        $booking = Booking::create([
-            'booking_reference' => $bookingReference,
-            'user_id' => null, // 管理者からの追加はゲスト扱い（会員紐付けなし）
-            'staff_id' => $availableStaffs->first()->id, // とりあえず出勤している最初のスタッフを自動割当
-            'menu_id' => $validated['menu_id'],
-            'start_time' => $newStartTime,
-            'end_time' => $newEndTime,
-            'customer_name' => $validated['customer_name'],
-            'customer_email' => $validated['customer_email'],
-            'customer_phone' => $validated['customer_phone'],
-            'customer_memo' => $validated['customer_memo'],
-            'status' => $validated['status'],
-            'survey_responses' => null, // 管理者登録なのでアンケートは空
-        ]);
+            //  DBへの保存処理
+            $booking = Booking::create([
+                'booking_reference' => $bookingReference,
+                'user_id' => null, // 管理者からの追加はゲスト扱い（会員紐付けなし）
+                'staff_id' => $availableStaffs->first()->id, // とりあえず出勤している最初のスタッフを自動割当
+                'menu_id' => $validated['menu_id'],
+                'start_time' => $newStartTime,
+                'end_time' => $newEndTime,
+                'customer_name' => $validated['customer_name'],
+                'customer_email' => $validated['customer_email'],
+                'customer_phone' => $validated['customer_phone'],
+                'customer_memo' => $validated['customer_memo'],
+                'status' => $validated['status'],
+                'survey_responses' => null, // 管理者登録なのでアンケートは空
+            ]);
 
-        return response()->json(['message' => '新規予約を作成しました', 'booking' => $booking], 201);
+            return response()->json(['message' => '新規予約を作成しました', 'booking' => $booking], 201);
+        });
     }
 
     public function update(Request $request, $id)
@@ -113,54 +118,58 @@ class BookingController extends Controller
             'customer_memo' => 'nullable|string',
         ]);
 
-        $newStartTime = Carbon::parse($validated['start_time']);
-        // 選択されたメニューの所要時間を取得して、終了時刻を計算
-        $menu = Menu::findOrFail($validated['menu_id']);
-        $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
+        return DB::transaction(function () use ($validated) {
+            $newStartTime = Carbon::parse($validated['start_time']);
+            // 選択されたメニューの所要時間を取得して、終了時刻を計算
+            $menu = Menu::findOrFail($validated['menu_id']);
+            $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
 
-        // ステータスがキャンセルの場合は枠を空けるのでチェック不要
-        if ($validated['status'] !== 'cancelled') {
-            // 対象曜日の出勤スタッフ数を取得（Card19のロジックを再利用）
-            $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
+            // ステータスがキャンセルの場合は枠を空けるのでチェック不要
+            if ($validated['status'] !== 'cancelled') {
+                // 対象曜日の出勤スタッフ数を取得（Card19のロジックを再利用）
+                $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
 
-            // Settingモデルから定休日を取得して比較！
-            $settings = Setting::first();
-            $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
-            
-            if (in_array($dayOfWeek, $regularHolidays)) {
-                // フロントエンドの catch (error.response.status === 409) に引っ掛ける
-                return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
+                // Settingモデルから定休日を取得して比較！
+                $settings = Setting::first();
+                $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
+                
+                if (in_array($dayOfWeek, $regularHolidays)) {
+                    // フロントエンドの catch (error.response.status === 409) に引っ掛ける
+                    return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
+                }
+
+                $availableStaffCount = Staff::where('is_active', true)
+                    ->whereHas('schedule', function ($q) use ($dayOfWeek) {
+                        $q->where($dayOfWeek, true);
+                    })
+                    ->lockForUpdate()
+                    ->count();
+
+                // 「自分自身（$id）を除外」して重複をカウント！
+                $overlappingBookings = Booking::where('id', '!=', $id) // 👈 これが超重要！
+                    ->where('status', '!=', 'cancelled')
+                    ->where(function ($query) use ($newStartTime, $newEndTime) {
+                        $query->where('start_time', '<', $newEndTime)
+                            ->where('end_time', '>', $newStartTime);
+                    })->count();
+
+                // 枠が溢れていたら409エラーで弾く
+                if ($overlappingBookings >= $availableStaffCount) {
+                    return response()->json(['message' => 'この時間は予約枠が埋まっています。'], 409);
+                }
             }
 
-            $availableStaffCount = Staff::where('is_active', true)
-                ->whereHas('schedule', function ($q) use ($dayOfWeek) {
-                    $q->where($dayOfWeek, true);
-                })->count();
+            // 検証を通過したら更新
+            $booking->update([
+                'start_time' => $newStartTime,
+                'end_time' => $newEndTime,
+                'menu_id' => $validated['menu_id'],
+                'status' => $validated['status'],
+                'customer_memo' => $validated['customer_memo'],
+            ]);
 
-            // 「自分自身（$id）を除外」して重複をカウント！
-            $overlappingBookings = Booking::where('id', '!=', $id) // 👈 これが超重要！
-                ->where('status', '!=', 'cancelled')
-                ->where(function ($query) use ($newStartTime, $newEndTime) {
-                    $query->where('start_time', '<', $newEndTime)
-                          ->where('end_time', '>', $newStartTime);
-                })->count();
-
-            // 枠が溢れていたら409エラーで弾く
-            if ($overlappingBookings >= $availableStaffCount) {
-                return response()->json(['message' => 'この時間は予約枠が埋まっています。'], 409);
-            }
-        }
-
-        // 検証を通過したら更新
-        $booking->update([
-            'start_time' => $newStartTime,
-            'end_time' => $newEndTime,
-            'menu_id' => $validated['menu_id'],
-            'status' => $validated['status'],
-            'customer_memo' => $validated['customer_memo'],
-        ]);
-
-        return response()->json(['message' => '予約を更新しました', 'booking' => $booking]);
+            return response()->json(['message' => '予約を更新しました', 'booking' => $booking]);
+        });
     }
 
     // 一覧検索API
