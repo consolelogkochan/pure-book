@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdminLayout } from '../layouts/AdminLayout';
+import { Button } from '../components/Button';
 import axios from 'axios';
 
 interface SearchFormInputs {
@@ -18,6 +19,7 @@ export const AdminSearch = () => {
   const [results, setResults] = useState<any[]>([]);
   const [menus, setMenus] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pagination, setPagination] = useState<{current_page: number, last_page: number, total: number} | null>(null);
 
   // 初回マウント時にメニュー一覧と、初期の予約一覧を取得
   useEffect(() => {
@@ -27,7 +29,7 @@ export const AdminSearch = () => {
         setMenus(menusRes.data.menus || menusRes.data || []);
         
         // 初期状態（条件なし）で検索を実行しておく
-        fetchSearchResults({});
+        fetchSearchResults({}, 1); 
       } catch (error) {
         console.error('初期データの取得に失敗しました', error);
       }
@@ -36,11 +38,19 @@ export const AdminSearch = () => {
   }, []);
 
   // 検索APIを叩いて結果をStateに入れる関数
-  const fetchSearchResults = async (params: any) => {
+  const fetchSearchResults = async (params: any, page: number = 1) => {
     setIsLoading(true);
     try {
-      const res = await axios.get('http://localhost/api/admin/bookings/search', { params });
-      setResults(res.data);
+      const res = await axios.get('http://localhost/api/admin/bookings/search', { 
+        params: { ...params, page } 
+      });
+      // Laravelの paginate() を使うと、データ本体は .data の中に入る
+      setResults(res.data.data);
+      setPagination({
+        current_page: res.data.current_page,
+        last_page: res.data.last_page,
+        total: res.data.total
+      });
     } catch (error) {
       alert('検索に失敗しました');
     } finally {
@@ -49,7 +59,7 @@ export const AdminSearch = () => {
   };
 
   const onSubmit = (data: SearchFormInputs) => {
-    fetchSearchResults(data);
+    fetchSearchResults(data, 1); 
   };
 
   // 「CSVダウンロードの魔法」の実装
@@ -87,14 +97,28 @@ export const AdminSearch = () => {
   // 一覧画面から直接ステータスを変更する機能
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
-      // ここは既存の update APIを使い回せますが、簡略化のため status だけ送るパッチ的処理を想定
-      // 今回はCard22で作った update メソッドだと他項目も必須になるため、
-      // 実際の実装ではステータス変更専用のAPI（PATCH /bookings/{id}/status）を作るのがベストです。
-      // 今回はUIの変更確認のみに留めます。
-      alert(`※簡易実装: 予約ID [${id}] のステータスを ${newStatus} に変更します。(API連携は省略)`);
+      await axios.patch(`http://localhost/api/admin/bookings/${id}/status`, { status: newStatus });
+      alert('ステータスを更新しました');
+      
+      // 再検索せず、画面上のデータだけを書き換えて通信を節約する
+      setResults(prevResults => 
+        prevResults.map(r => r.id === id ? { ...r, status: newStatus } : r)
+      );
     } catch (error) {
+      alert('ステータスの更新に失敗しました');
       console.error(error);
     }
+  };
+
+  // アンケートデータを画面表示用の文字列に変換する関数
+  const formatSurveyResponse = (responses: any) => {
+    if (!responses || typeof responses !== 'object') return 'なし';
+    
+    return Object.entries(responses).map(([question, answer]) => {
+      // JavaScriptでも、配列ならカンマ区切り、それ以外は文字に変換する処理を挟む
+      const answerText = Array.isArray(answer) ? answer.join(', ') : String(answer);
+      return `${question}: ${answerText}`;
+    }).join(' / ');
   };
 
   return (
@@ -106,14 +130,10 @@ export const AdminSearch = () => {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-slate-800">予約検索</h2>
             {/* CSVダウンロードボタン */}
-            <button 
-              type="button" 
-              onClick={handleDownloadCsv}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition flex items-center gap-2 text-sm"
-            >
+            <Button onClick={handleDownloadCsv} colorClass="bg-green-600 hover:bg-green-700 flex items-center gap-2 text-sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
               CSV出力
-            </button>
+            </Button>
           </div>
           
           <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
@@ -147,9 +167,9 @@ export const AdminSearch = () => {
                 <option value="cancelled">キャンセル</option>
               </select>
             </div>
-            <button type="submit" disabled={isLoading} className="w-full bg-slate-800 text-white font-bold py-2 px-4 rounded hover:bg-slate-700 transition disabled:opacity-50">
+            <Button type="submit" disabled={isLoading} colorClass="bg-slate-800 hover:bg-slate-700 w-full">
               {isLoading ? '検索中...' : '検索する'}
-            </button>
+            </Button>
           </form>
         </div>
 
@@ -165,6 +185,7 @@ export const AdminSearch = () => {
                   <th className="p-4 font-bold text-sm text-slate-600">電話番号</th>
                   <th className="p-4 font-bold text-sm text-slate-600">メニュー</th>
                   <th className="p-4 font-bold text-sm text-slate-600">担当</th>
+                  <th className="p-4 font-bold text-sm text-slate-600">アンケート回答</th>
                   <th className="p-4 font-bold text-sm text-slate-600">ステータス</th>
                 </tr>
               </thead>
@@ -180,6 +201,11 @@ export const AdminSearch = () => {
                       <td className="p-4 text-sm text-slate-600">{result.customer_phone}</td>
                       <td className="p-4 text-sm text-slate-800">{result.menu?.name}</td>
                       <td className="p-4 text-sm text-slate-800">{result.staff?.name || '未定'}</td>
+                      <td className="p-4 text-sm text-slate-500 max-w-50 truncate" title={formatSurveyResponse(result.survey_responses)}>
+                        {formatSurveyResponse(result.survey_responses) !== 'なし' 
+                          ? formatSurveyResponse(result.survey_responses) 
+                          : <span className="text-slate-300">-</span>}
+                      </td>
                       <td className="p-4">
                         <select 
                           value={result.status}
@@ -204,6 +230,31 @@ export const AdminSearch = () => {
               </tbody>
             </table>
           </div>
+
+          {/* ページネーション（全件数とページ送りボタン） */}
+          {pagination && pagination.last_page > 1 && (
+            <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="text-sm text-slate-600 font-bold">
+                全 {pagination.total} 件中 {pagination.current_page} ページ目
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => fetchSearchResults(getValues(), pagination.current_page - 1)}
+                  disabled={pagination.current_page === 1}
+                  colorClass="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
+                >
+                  前へ
+                </Button>
+                <Button 
+                  onClick={() => fetchSearchResults(getValues(), pagination.current_page + 1)}
+                  disabled={pagination.current_page === pagination.last_page}
+                  colorClass="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
+                >
+                  次へ
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

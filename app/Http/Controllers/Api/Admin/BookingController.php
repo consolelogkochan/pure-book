@@ -170,7 +170,7 @@ class BookingController extends Controller
         $bookings = Booking::with(['menu', 'staff'])
             ->searchFilter($request->all())
             ->orderBy('start_time', 'desc')
-            ->get();
+            ->paginate(20);
 
         return response()->json($bookings);
     }
@@ -182,7 +182,7 @@ class BookingController extends Controller
         $bookings = Booking::with(['menu', 'staff'])
             ->searchFilter($request->all())
             ->orderBy('start_time', 'desc')
-            ->get();
+            ->cursor(); // 🌟 1件ずつ省メモリで取り出す
 
         $headers = [
             "Content-type"        => "text/csv",
@@ -198,10 +198,22 @@ class BookingController extends Controller
             fputs($file, "\xEF\xBB\xBF");
             
             // CSVの1行目（ヘッダー）
-            fputcsv($file, ['予約番号', '予約日時', 'お名前', '電話番号', 'メール', 'メニュー', 'ステータス', '店舗メモ']);
+            fputcsv($file, ['予約番号', '予約日時', 'お名前', '電話番号', 'メール', 'メニュー', 'ステータス', '店舗メモ', 'アンケート回答']);
 
             // データ行
             foreach ($bookings as $booking) {
+                // アンケート内容を結合
+                $surveyText = '';
+                if (is_array($booking->survey_responses)) {
+                    $surveys = [];
+                    foreach ($booking->survey_responses as $question => $answer) {
+                        // 回答が配列（複数選択など）だった場合は、カンマ区切りで文字にする
+                        $answerText = is_array($answer) ? implode(', ', $answer) : (string)$answer;
+                        $surveys[] = "{$question}: {$answerText}";
+                    }
+                    $surveyText = implode(" / ", $surveys);
+                }
+
                 fputcsv($file, [
                     $booking->booking_reference,
                     $booking->start_time->format('Y-m-d H:i'),
@@ -210,7 +222,8 @@ class BookingController extends Controller
                     $booking->customer_email,
                     $booking->menu ? $booking->menu->name : '',
                     $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
-                    $booking->customer_memo
+                    $booking->customer_memo,
+                    $surveyText
                 ]);
             }
             fclose($file);
@@ -218,5 +231,17 @@ class BookingController extends Controller
 
         // 大量データでもメモリを圧迫しない stream ダウンロード方式
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:pending,confirmed,cancelled',
+        ]);
+
+        $booking = Booking::findOrFail($id);
+        $booking->update(['status' => $validated['status']]);
+
+        return response()->json(['message' => 'ステータスを更新しました', 'booking' => $booking]);
     }
 }
