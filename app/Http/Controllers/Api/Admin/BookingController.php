@@ -118,7 +118,7 @@ class BookingController extends Controller
             'customer_memo' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $id, $booking) {
             $newStartTime = Carbon::parse($validated['start_time']);
             // 選択されたメニューの所要時間を取得して、終了時刻を計算
             $menu = Menu::findOrFail($validated['menu_id']);
