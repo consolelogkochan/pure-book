@@ -12,6 +12,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Mail\BookingConfirmed;
+use App\Mail\BookingCancelled;
+use Illuminate\Support\Facades\Mail;
 
 class BookingController extends Controller
 {
@@ -96,6 +99,9 @@ class BookingController extends Controller
 
             }); // ▲トランザクションここまで（無事に抜けたらロック解除＆保存完了）
 
+            // 非同期で予約完了メールを送信する指示（キューに投げる）
+            Mail::to($booking->customer_email)->queue(new BookingConfirmed($booking));
+
             // 成功レスポンス（201 Created）
             return response()->json([
                 'message' => '予約が完了しました！',
@@ -177,7 +183,10 @@ class BookingController extends Controller
         // 3. キャンセル処理を通す（status を cancelled に更新）
         $booking->update(['status' => 'cancelled']);
 
-        // 4. キャンセル成功のテキストを返す
+        // 4.非同期でキャンセル完了メールを送信する指示（キューに投げる）
+        Mail::to($booking->customer_email)->queue(new BookingCancelled($booking));
+
+        // 5. キャンセル成功のテキストを返す
         return response()->json([
             'message' => '予約のキャンセルが完了しました。',
             'booking' => $booking,
