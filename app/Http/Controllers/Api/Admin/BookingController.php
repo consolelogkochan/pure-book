@@ -7,12 +7,12 @@ use App\Models\Booking;
 use App\Models\Menu;
 use App\Models\Setting;
 use App\Models\Staff;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
-use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
@@ -196,11 +196,11 @@ class BookingController extends Controller
             ->cursor(); // 🌟 1件ずつ省メモリで取り出す
 
         $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=bookings.csv",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename=bookings.csv',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         $callback = function () use ($bookings) {
@@ -217,7 +217,7 @@ class BookingController extends Controller
                 $surveyText = '';
                 // PHPStan対策1: survey_responsesの型を明示的に判定・変換
                 $responses = $booking->survey_responses;
-                
+
                 // PHPStanには文字列に見えているので、文字列なら配列に変換する処理を挟む
                 if (is_string($responses)) {
                     $responses = json_decode($responses, true);
@@ -237,10 +237,10 @@ class BookingController extends Controller
                 $startTime = \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d H:i');
 
                 // PHPStan対策3: $booking->menu が Menuモデルであることを注釈（PHPDoc）で教える
-                /** @var \App\Models\Menu|null $menu */
+                /** @var Menu|null $menu */
                 $menu = $booking->menu;
                 $menuName = $menu ? $menu->name : '';
-                
+
                 fputcsv($file, [
                     $booking->booking_reference,
                     $startTime,
@@ -249,7 +249,7 @@ class BookingController extends Controller
                     $booking->customer_email,
                     $menuName,
                     $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
-                    (string)$booking->customer_memo, // nullの可能性があるので明示的にstringへキャスト
+                    (string) $booking->customer_memo, // nullの可能性があるので明示的にstringへキャスト
                     $surveyText,
                 ]);
             }

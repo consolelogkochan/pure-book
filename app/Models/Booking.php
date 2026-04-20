@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 
 class Booking extends Model
 {
@@ -48,9 +48,7 @@ class Booking extends Model
     // 💡 when($値, function($q, $値) {}) は「もし$値が存在したら、この条件を追加する」というLaravelの超便利メソッドです
     //  PHPDocと、実際の引数・戻り値に型を追加
     /**
-     * @param Builder $query
-     * @param array<string, mixed> $filters
-     * @return Builder
+     * @param  array<string, mixed>  $filters
      */
     public function scopeSearchFilter(Builder $query, array $filters): Builder
     {
