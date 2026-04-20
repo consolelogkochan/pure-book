@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
 use App\Models\StaffSchedule;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ResourceController extends Controller
 {
@@ -15,6 +15,7 @@ class ResourceController extends Controller
     {
         // with('schedule') と書くだけで、1対1のリレーションデータを自動でくっつけてくれます！
         $staffs = Staff::where('is_active', true)->with('schedule')->get();
+
         return response()->json($staffs);
     }
 

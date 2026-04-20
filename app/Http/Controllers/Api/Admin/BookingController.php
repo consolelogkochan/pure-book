@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use Illuminate\Http\Request;
 use App\Models\Menu;
 use App\Models\Setting;
-use Illuminate\Support\Carbon;
 use App\Models\Staff;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Response;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
@@ -54,7 +54,7 @@ class BookingController extends Controller
             $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
             $settings = Setting::first();
             $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
-            
+
             if (in_array($dayOfWeek, $regularHolidays)) {
                 return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
             }
@@ -84,7 +84,7 @@ class BookingController extends Controller
             }
 
             //  予約番号の生成（BKG-ランダム大文字英数字8桁）
-            $bookingReference = 'BKG-' . strtoupper(Str::random(8));
+            $bookingReference = 'BKG-'.strtoupper(Str::random(8));
 
             //  DBへの保存処理
             $booking = Booking::create([
@@ -132,7 +132,7 @@ class BookingController extends Controller
                 // Settingモデルから定休日を取得して比較！
                 $settings = Setting::first();
                 $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
-                
+
                 if (in_array($dayOfWeek, $regularHolidays)) {
                     // フロントエンドの catch (error.response.status === 409) に引っ掛ける
                     return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
@@ -194,18 +194,18 @@ class BookingController extends Controller
             ->cursor(); // 🌟 1件ずつ省メモリで取り出す
 
         $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=bookings.csv",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename=bookings.csv',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
-        $callback = function() use($bookings) {
+        $callback = function () use ($bookings) {
             $file = fopen('php://output', 'w');
             // Excelで文字化けしないようにBOM（特殊な目印）をつける
-            fputs($file, "\xEF\xBB\xBF");
-            
+            fwrite($file, "\xEF\xBB\xBF");
+
             // CSVの1行目（ヘッダー）
             fputcsv($file, ['予約番号', '予約日時', 'お名前', '電話番号', 'メール', 'メニュー', 'ステータス', '店舗メモ', 'アンケート回答']);
 
@@ -217,10 +217,10 @@ class BookingController extends Controller
                     $surveys = [];
                     foreach ($booking->survey_responses as $question => $answer) {
                         // 回答が配列（複数選択など）だった場合は、カンマ区切りで文字にする
-                        $answerText = is_array($answer) ? implode(', ', $answer) : (string)$answer;
+                        $answerText = is_array($answer) ? implode(', ', $answer) : (string) $answer;
                         $surveys[] = "{$question}: {$answerText}";
                     }
-                    $surveyText = implode(" / ", $surveys);
+                    $surveyText = implode(' / ', $surveys);
                 }
 
                 fputcsv($file, [
@@ -232,7 +232,7 @@ class BookingController extends Controller
                     $booking->menu ? $booking->menu->name : '',
                     $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
                     $booking->customer_memo,
-                    $surveyText
+                    $surveyText,
                 ]);
             }
             fclose($file);

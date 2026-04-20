@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Menu;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class MenuController extends Controller
 {
@@ -14,6 +14,7 @@ class MenuController extends Controller
     {
         // 管理者はすべて見るので where句はなし。新しい順に取得。
         $menus = Menu::orderBy('id', 'desc')->get();
+
         return response()->json($menus);
     }
 
@@ -27,6 +28,7 @@ class MenuController extends Controller
         ]);
 
         $menu = Menu::create($validated);
+
         return response()->json($menu, 201);
     }
 
@@ -40,6 +42,7 @@ class MenuController extends Controller
         ]);
 
         $menu->update($validated);
+
         return response()->json($menu);
     }
 
@@ -47,8 +50,9 @@ class MenuController extends Controller
     public function toggleStatus(Menu $menu): JsonResponse
     {
         $menu->update([
-            'is_active' => !$menu->is_active // 現在の状態を反転させる
+            'is_active' => ! $menu->is_active, // 現在の状態を反転させる
         ]);
+
         return response()->json($menu);
     }
 }

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreBookingRequest; // さっき作った門番
+use App\Mail\BookingCancelled;
+use App\Mail\BookingConfirmed;
 use App\Models\Booking;
 use App\Models\Menu;
 use App\Models\Staff;
@@ -11,10 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use App\Mail\BookingConfirmed;
-use App\Mail\BookingCancelled;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {

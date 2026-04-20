@@ -11,8 +11,8 @@ class StaffSchedule extends Model
     use HasFactory;
 
     protected $fillable = [
-        'staff_id', 'monday', 'tuesday', 'wednesday', 
-        'thursday', 'friday', 'saturday', 'sunday'
+        'staff_id', 'monday', 'tuesday', 'wednesday',
+        'thursday', 'friday', 'saturday', 'sunday',
     ];
 
     protected function casts(): array

@@ -4,14 +4,15 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class StaffController extends Controller
 {
     public function index(): JsonResponse
     {
         $staffs = Staff::orderBy('id', 'desc')->get();
+
         return response()->json($staffs);
     }
 
@@ -23,6 +24,7 @@ class StaffController extends Controller
         ]);
 
         $staff = Staff::create($validated);
+
         return response()->json($staff, 201);
     }
 
@@ -34,12 +36,14 @@ class StaffController extends Controller
         ]);
 
         $staff->update($validated);
+
         return response()->json($staff);
     }
 
     public function toggleStatus(Staff $staff): JsonResponse
     {
-        $staff->update(['is_active' => !$staff->is_active]);
+        $staff->update(['is_active' => ! $staff->is_active]);
+
         return response()->json($staff);
     }
 }

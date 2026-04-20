@@ -18,7 +18,7 @@ class SurveyQuestionController extends Controller
     public function store(Request $request)
     {
         $questions = $request->input('questions');
-        
+
         // ▼追加：実際に保存/更新されたDBのIDを記録する配列
         $savedIds = [];
 

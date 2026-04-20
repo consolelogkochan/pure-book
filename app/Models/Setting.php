@@ -25,7 +25,7 @@ class Setting extends Model
     {
         return [
             // DBのJSON文字列を、PHPの配列(array)に自動変換する
-            'regular_holidays' => 'array', 
+            'regular_holidays' => 'array',
         ];
     }
 }

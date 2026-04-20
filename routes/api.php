@@ -1,22 +1,20 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-
-// 顧客向けコントローラー
-use App\Http\Controllers\Api\AvailableSlotController;
-use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\Api\MenuController;  
-use App\Http\Controllers\Api\StaffController; 
-use App\Http\Controllers\Api\SurveyQuestionController as PublicSurveyQuestionController;
-
-// 管理者向けコントローラー
+use App\Http\Controllers\Api\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\Admin\MenuController as AdminMenuController;
-use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
+// 顧客向けコントローラー
 use App\Http\Controllers\Api\Admin\ResourceController;
 use App\Http\Controllers\Api\Admin\SettingController;
+use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\Api\Admin\SurveyQuestionController as AdminSurveyQuestionController;
-use App\Http\Controllers\Api\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Api\AvailableSlotController;
+// 管理者向けコントローラー
+use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\MenuController;
+use App\Http\Controllers\Api\StaffController;
+use App\Http\Controllers\Api\SurveyQuestionController as PublicSurveyQuestionController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -45,7 +43,7 @@ Route::controller(BookingController::class)->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('admin')->group(function () {
-    
+
     Route::controller(AdminMenuController::class)->group(function () {
         Route::get('/menus', 'index');
         Route::post('/menus', 'store');

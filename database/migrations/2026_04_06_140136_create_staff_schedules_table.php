@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             // スタッフテーブルとの紐付け（スタッフが削除されたらスケジュールも連動して消える設定）
             $table->foreignId('staff_id')->constrained('staff')->cascadeOnDelete();
-            
+
             // 月〜日の稼働フラグ（true:出勤, false:休み）。初期値はすべて出勤(true)とする。
             $table->boolean('monday')->default(true);
             $table->boolean('tuesday')->default(true);
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->boolean('friday')->default(true);
             $table->boolean('saturday')->default(true);
             $table->boolean('sunday')->default(true);
-            
+
             $table->timestamps();
         });
     }

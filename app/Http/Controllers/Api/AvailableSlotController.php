@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Menu;
-use App\Models\Staff; // 👈 追加（重要）
-use App\Models\Setting; // 👈 追加（店舗設定モデル）
+use App\Models\Setting; // 👈 追加（重要）
+use App\Models\Staff; // 👈 追加（店舗設定モデル）
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -70,11 +70,11 @@ class AvailableSlotController extends Controller
             // 例：「1日前」の「17:00」という Carbonインスタンス（期限）を作る
             $deadlineDays = $settings->booking_deadline_days ?? 1;
             $deadlineTime = $settings->booking_deadline_time ?? '17:00:00';
-            
+
             $bookingDeadline = $targetDate->copy()
                 ->subDays($deadlineDays)
                 ->setTimeFromTimeString($deadlineTime);
-            
+
             // 「現在時刻」が「予約期限」を過ぎていたら、DB検索やループをやらずに空っぽを返す！
             if ($now > $bookingDeadline) {
                 return response()->json([]);
@@ -100,10 +100,9 @@ class AvailableSlotController extends Controller
             // その枠で予約した場合の「終了予定時刻」を計算
             $endTime = $currentTime->copy()->addMinutes($menu->duration_minutes);
 
-
             // 条件A: 終了予定時刻が、営業終了を超えていないか？
             if ($endTime <= $closeTime) {
-                
+
                 $isValidSlot = false;
 
                 // ▼追加：パターンA（時間ベース）のチェック▼
