@@ -12,10 +12,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         // FullCalendarから自動的に送られてくる期間のパラメーターを取得
         $start = $request->query('start');
@@ -32,7 +34,7 @@ class BookingController extends Controller
         return response()->json($query->get());
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         //  フロントから送られてきた入力値の形式チェック
         $validated = $request->validate([
@@ -106,7 +108,7 @@ class BookingController extends Controller
         });
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, string $id): JsonResponse
     {
         $booking = Booking::findOrFail($id);
 
@@ -173,7 +175,7 @@ class BookingController extends Controller
     }
 
     // 一覧検索API
-    public function search(Request $request)
+    public function search(Request $request): JsonResponse
     {
         // 💡 スコープを活用！これだけで全条件の絞り込みが完了します
         $bookings = Booking::with(['menu', 'staff'])
@@ -185,7 +187,7 @@ class BookingController extends Controller
     }
 
     // CSVダウンロードAPI
-    public function exportCsv(Request $request)
+    public function exportCsv(Request $request): StreamedResponse
     {
         // 検索と同じスコープを使って対象データを取得
         $bookings = Booking::with(['menu', 'staff'])
@@ -194,11 +196,11 @@ class BookingController extends Controller
             ->cursor(); // 🌟 1件ずつ省メモリで取り出す
 
         $headers = [
-            'Content-type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename=bookings.csv',
-            'Pragma' => 'no-cache',
-            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires' => '0',
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=bookings.csv",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
         ];
 
         $callback = function () use ($bookings) {
@@ -213,9 +215,17 @@ class BookingController extends Controller
             foreach ($bookings as $booking) {
                 // アンケート内容を結合
                 $surveyText = '';
-                if (is_array($booking->survey_responses)) {
+                // PHPStan対策1: survey_responsesの型を明示的に判定・変換
+                $responses = $booking->survey_responses;
+                
+                // PHPStanには文字列に見えているので、文字列なら配列に変換する処理を挟む
+                if (is_string($responses)) {
+                    $responses = json_decode($responses, true);
+                }
+
+                if (is_array($responses)) {
                     $surveys = [];
-                    foreach ($booking->survey_responses as $question => $answer) {
+                    foreach ($responses as $question => $answer) {
                         // 回答が配列（複数選択など）だった場合は、カンマ区切りで文字にする
                         $answerText = is_array($answer) ? implode(', ', $answer) : (string) $answer;
                         $surveys[] = "{$question}: {$answerText}";
@@ -223,15 +233,23 @@ class BookingController extends Controller
                     $surveyText = implode(' / ', $surveys);
                 }
 
+                // PHPStan対策2: start_timeを確実にCarbonインスタンスにしてからformatを呼ぶ
+                $startTime = \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d H:i');
+
+                // PHPStan対策3: $booking->menu が Menuモデルであることを注釈（PHPDoc）で教える
+                /** @var \App\Models\Menu|null $menu */
+                $menu = $booking->menu;
+                $menuName = $menu ? $menu->name : '';
+                
                 fputcsv($file, [
                     $booking->booking_reference,
-                    $booking->start_time->format('Y-m-d H:i'),
+                    $startTime,
                     $booking->customer_name,
                     $booking->customer_phone,
                     $booking->customer_email,
-                    $booking->menu ? $booking->menu->name : '',
+                    $menuName,
                     $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
-                    $booking->customer_memo,
+                    (string)$booking->customer_memo, // nullの可能性があるので明示的にstringへキャスト
                     $surveyText,
                 ]);
             }
@@ -242,7 +260,7 @@ class BookingController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
             'status' => 'required|in:pending,confirmed,cancelled',

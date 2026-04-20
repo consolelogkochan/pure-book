@@ -13,7 +13,7 @@ class BookingCancelled extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $booking;
+    public Booking $booking;
 
     public function __construct(Booking $booking)
     {
@@ -34,6 +34,10 @@ class BookingCancelled extends Mailable
         );
     }
 
+    // メソッドの上に注釈（PHPDoc）を追加して、配列の中身の型を教える
+    /**
+     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     */
     public function attachments(): array
     {
         return [];

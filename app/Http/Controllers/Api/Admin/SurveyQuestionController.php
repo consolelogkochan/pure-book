@@ -5,17 +5,18 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SurveyQuestion;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class SurveyQuestionController extends Controller
 {
     // 一覧取得
-    public function index()
+    public function index(): JsonResponse
     {
         return response()->json(SurveyQuestion::orderBy('order')->get());
     }
 
     // 保存（新規作成・更新を一括で行う）
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $questions = $request->input('questions');
 

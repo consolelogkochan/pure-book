@@ -14,7 +14,7 @@ class BookingConfirmed extends Mailable
     use Queueable, SerializesModels;
 
     // テンプレート（Blade）側で $booking として使えるように public にします
-    public $booking;
+    public Booking $booking;
 
     public function __construct(Booking $booking)
     {
@@ -36,6 +36,10 @@ class BookingConfirmed extends Mailable
         );
     }
 
+    // メソッドの上に注釈（PHPDoc）を追加して、配列の中身の型を教える
+    /**
+     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     */
     public function attachments(): array
     {
         return [];
