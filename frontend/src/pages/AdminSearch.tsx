@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdminLayout } from '../layouts/AdminLayout';
 import { Button } from '../components/Button';
-import axios from 'axios';
+// 設定済みの専用Axiosを呼ぶ
+import axios from '../axios';
 
 interface SearchFormInputs {
   date: string;

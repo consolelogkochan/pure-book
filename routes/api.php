@@ -7,12 +7,14 @@ use App\Http\Controllers\Api\Admin\ResourceController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\Api\Admin\SurveyQuestionController as AdminSurveyQuestionController;
-use App\Http\Controllers\Api\AvailableSlotController;
+use App\Http\Controllers\Api\AuthController;
 // 管理者向けコントローラー
+use App\Http\Controllers\Api\AvailableSlotController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\SurveyQuestionController as PublicSurveyQuestionController;
+use App\Http\Middleware\IsAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -42,7 +44,13 @@ Route::controller(BookingController::class)->group(function () {
 | 管理者向けAPI
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->group(function () {
+// 管理者ログイン（誰でもアクセス可能）
+Route::post('/admin/login', [AuthController::class, 'login']);
+
+// 管理者ログアウト（ログイン済みの人だけアクセス可能）
+Route::post('/admin/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+Route::prefix('admin')->middleware(['auth:sanctum', IsAdmin::class])->group(function () {
 
     Route::controller(AdminMenuController::class)->group(function () {
         Route::get('/menus', 'index');

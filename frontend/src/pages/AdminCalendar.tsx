@@ -5,8 +5,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, DateSelectArg } from '@fullcalendar/core';
-import axios from 'axios';
-
+// 設定済みの専用Axiosを呼ぶ
+import axios from '../axios';
 // 曜日の文字列をFullCalendar用の数値(0=日曜日)に変換するマップ
 const dayMap: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6

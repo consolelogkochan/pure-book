@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+// 設定済みの専用Axiosを呼ぶ
+import axios from '../../../axios';
 import { Button } from '../../../components/Button';
 
 // APIとやり取りするデータの型定義

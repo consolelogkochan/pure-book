@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
-import axios from 'axios';
+// 設定済みの専用Axiosを呼ぶ
+import axios from '../axios';
 import { useForm } from 'react-hook-form'; // 👈 追加
 import 'react-calendar/dist/Calendar.css';
 

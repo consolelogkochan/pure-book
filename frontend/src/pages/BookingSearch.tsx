@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import axios from 'axios';
+// 設定済みの専用Axiosを呼ぶ
+import axios from '../axios';
 
 // 検索フォームの型
 interface SearchFormData {
