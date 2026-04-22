@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { isAxiosError } from 'axios';
 
 export default function AdminLogin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+
     const navigate = useNavigate();
     const { setUser } = useAuth();
 
-    const handleLogin = async (e) => {
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
 
@@ -32,17 +34,22 @@ export default function AdminLogin() {
             // ログイン成功時の処理
             alert(response.data.message);
             // ローカルストレージ等にユーザー情報を保存（必要に応じて）
-            localStorage.setItem('adminUser', JSON.stringify(response.data.user));
+            localStorage.setItem('adminUser', JSON.stringify(response.data.user || userResponse.data));
             
             // 管理者のダッシュボードへ遷移
             navigate('/admin/calendar'); 
 
         } catch (err) {
-            // エラーハンドリング
-            if (err.response?.status === 401 || err.response?.status === 403) {
-                setError(err.response.data.message);
+            // エラーがAxiosのエラーであるか（ネットワークエラー等ではないか）を厳格にチェック
+            if (isAxiosError(err)) {
+                if (err.response?.status === 401 || err.response?.status === 403) {
+                    // サーバーからのエラーメッセージ、またはデフォルトのメッセージをセット
+                    setError(err.response.data?.message || '認証に失敗しました。');
+                } else {
+                    setError('ログインに失敗しました。通信環境をご確認ください。');
+                }
             } else {
-                setError('ログインに失敗しました。通信環境をご確認ください。');
+                setError('予期せぬエラーが発生しました。');
             }
         }
     };
