@@ -8,10 +8,11 @@ use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\Api\Admin\SurveyQuestionController as AdminSurveyQuestionController;
 use App\Http\Controllers\Api\AuthController;
-// 管理者向けコントローラー
 use App\Http\Controllers\Api\AvailableSlotController;
+// 管理者向けコントローラー
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\MenuController;
+use App\Http\Controllers\Api\PublicSettingController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\SurveyQuestionController as PublicSurveyQuestionController;
 use App\Http\Middleware\IsAdmin;
@@ -31,7 +32,7 @@ Route::get('/menus', [MenuController::class, 'index']);
 Route::get('/staffs', [StaffController::class, 'index']);
 Route::get('/available-slots', [AvailableSlotController::class, 'index']);
 Route::get('/survey-questions', [PublicSurveyQuestionController::class, 'index']);
-
+Route::get('/settings', [PublicSettingController::class, 'show']);
 // ▼ リファクタリング：同じコントローラーはまとめる
 Route::controller(BookingController::class)->group(function () {
     Route::post('/bookings', 'store');

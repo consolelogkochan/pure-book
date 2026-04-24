@@ -26,6 +26,7 @@ interface BookingFormData {
   customer_email: string;
   customer_phone?: string;
   customer_memo?: string;
+  terms_accepted: boolean;
   // アンケートの項目は数が決まっていないため、どんなキー名(string)でも受け入れる設定にする
   [key: string]: any;
 }
@@ -35,13 +36,11 @@ export const BookingWizard = () => {
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  
-  // ▼ 新しく追加する状態（State） ▼
-  const [selectedTime, setSelectedTime] = useState<string | null>(null); // 選んだ時間
-  const [isSubmitting, setIsSubmitting] = useState(false); // 送信中（ローディング）判定
-  const [completedBookingRef, setCompletedBookingRef] = useState<string | null>(null); // 完了時の予約番号
-
+  const [selectedTime, setSelectedTime] = useState<string | null>(null); 
+  const [isSubmitting, setIsSubmitting] = useState(false); 
+  const [completedBookingRef, setCompletedBookingRef] = useState<string | null>(null); 
   const [surveyQuestions, setSurveyQuestions] = useState<SurveyQuestion[]>([]);
+  const [termsText, setTermsText] = useState<string | null>(null);
 
   // React Hook Form の準備
   const { register, handleSubmit, formState: { errors } } = useForm<BookingFormData>();
@@ -50,9 +49,10 @@ export const BookingWizard = () => {
     // ▼ 修正：メニューとアンケートの両方を同時に取得する
     const fetchData = async () => {
       try {
-        const [menusRes, surveyRes] = await Promise.all([
+        const [menusRes, surveyRes, settingsRes] = await Promise.all([
           axios.get('http://localhost/api/menus'),
-          axios.get('http://localhost/api/survey-questions') // 追加
+          axios.get('http://localhost/api/survey-questions'),
+          axios.get('http://localhost/api/settings')
         ]);
         
         setMenus(menusRes.data.menus || menusRes.data || []);
@@ -62,6 +62,8 @@ export const BookingWizard = () => {
           options: q.options || []
         }));
         setSurveyQuestions(formattedSurvey);
+
+        setTermsText(settingsRes.data.terms_text);
         
       } catch (error) {
         console.error('データの取得に失敗しました', error);
@@ -295,7 +297,7 @@ export const BookingWizard = () => {
               />
             </div>
 
-            {/* ▼ 修正：動的アンケートの描画ロジック ▼ */}
+            {/* 動的アンケートの描画ロジック ▼ */}
             {surveyQuestions.length > 0 && (
               <div className="bg-white p-5 rounded border mt-6 shadow-sm">
                 <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">店舗からのアンケート</h4>
@@ -362,7 +364,36 @@ export const BookingWizard = () => {
                 </div>
               </div>
             )}
-            {/* ▲ ここまで追加 ▲ */}
+            
+            {/* 利用規約の同意 UI ▼ */}
+            {/* termsTextが存在し、かつ空文字でない場合のみ表示 */}
+            {termsText && termsText.trim() !== '' && (
+              <div className="bg-white p-5 rounded border mt-6 shadow-sm">
+                <h4 className="font-bold text-gray-700 mb-4 border-b pb-2">利用規約の確認</h4>
+                
+                {/* 規約テキストの表示エリア（スクロール可能にする） */}
+                <div className="bg-slate-50 border rounded p-4 h-40 overflow-y-auto mb-4 text-sm text-gray-700 whitespace-pre-wrap">
+                  {termsText}
+                </div>
+
+                {/* 同意チェックボックス（requiredで縛る） */}
+                <div>
+                  <label className="flex items-center cursor-pointer group">
+                    <input 
+                      type="checkbox"
+                      {...register('terms_accepted', { required: '予約を進めるには利用規約への同意が必要です。' })}
+                      className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 mr-3"
+                    />
+                    <span className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+                      利用規約に同意する <span className="text-red-500">*</span>
+                    </span>
+                  </label>
+                  {errors.terms_accepted && (
+                    <p className="text-red-500 text-xs mt-2 ml-8">{errors.terms_accepted.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* 確定ボタン */}
             <div className="pt-4 text-center">

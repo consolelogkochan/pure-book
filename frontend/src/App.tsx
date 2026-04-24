@@ -12,7 +12,7 @@ import { SurveySettings } from './pages/admin/settings/SurveySettings';
 import { MenusSettings } from './pages/admin/settings/MenusSettings';
 import { StaffSettings } from './pages/admin/settings/StaffSettings';
 import { ResourceSettings } from './pages/admin/settings/ResourceSettings';
-import AdminLogin from './pages/admin/Login';
+import AdminLogin from './pages/admin/AdminLogin';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
