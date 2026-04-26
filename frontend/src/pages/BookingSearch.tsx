@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 // 設定済みの専用Axiosを呼ぶ
 import axios from '../axios';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Stripeの初期化（Viteの環境変数から公開キーを読み込む）
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
 
 // 検索フォームの型
 interface SearchFormData {
@@ -15,8 +20,94 @@ interface Booking {
   customer_name: string;
   start_time: string;
   status: string;
-  // menuなどは必要に応じて追加
+  payment_status: string; 
+  menu: { name: string; price: number };
 }
+
+// ==========================================
+// 💳 決済フォームコンポーネント（内部コンポーネントとして分離）
+// ==========================================
+const CheckoutForm = ({ booking, onSuccess, onCancel }: { booking: Booking, onSuccess: () => void, onCancel: () => void }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    try {
+      // 1. Laravelから決済の準備情報（clientSecret）をもらう
+      const intentRes = await axios.post(`/api/bookings/${booking.booking_reference}/payment-intent`);
+      const clientSecret = intentRes.data.clientSecret;
+
+      const cardElement = elements.getElement('card');
+
+      // ▼ 追加：cardElement が null の場合の安全確認（これでTSの警告が完全に消えます）
+      if (!cardElement) {
+        throw new Error('クレジットカード情報が正しく読み込まれませんでした。');
+      }
+
+      // 2. Stripeに直接カード情報を送って決済を実行する
+      const paymentResult = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: { name: booking.customer_name }, // 不正利用防止のための名前情報
+        },
+      });
+
+      if (paymentResult.error) {
+        // カード情報の間違いや残高不足の場合
+        throw new Error(paymentResult.error.message || '決済に失敗しました。');
+      }
+
+      if (paymentResult.paymentIntent?.status === 'succeeded') {
+        // 3. Laravelに「決済成功したから確認してDBを更新して！」と伝える
+        await axios.post(`/api/bookings/${booking.booking_reference}/verify-payment`, {
+          payment_intent_id: paymentResult.paymentIntent.id,
+        });
+        
+        alert('決済が完了しました！');
+        onSuccess(); // 親コンポーネントに成功を通知して再読み込みさせる
+      }
+
+    } catch (error: any) {
+      setErrorMessage(error.message || '予期せぬエラーが発生しました。');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 p-4 bg-white border rounded-lg shadow-inner">
+      <h4 className="font-bold text-gray-700 mb-4">クレジットカード決済 ({booking.menu.price.toLocaleString()}円)</h4>
+      
+      {/* Stripeが提供する安全なカード入力枠 */}
+      <div className="p-3 border rounded-md bg-gray-50 mb-4">
+        <CardElement options={{ hidePostalCode: true }} />
+      </div>
+
+      {errorMessage && <p className="text-red-500 text-sm mb-4">{errorMessage}</p>}
+
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} disabled={isProcessing} className="flex-1 py-2 bg-gray-200 text-gray-700 rounded font-bold hover:bg-gray-300 transition">
+          キャンセル
+        </button>
+        <button type="submit" disabled={!stripe || isProcessing} className={`flex-1 py-2 text-white rounded font-bold transition ${isProcessing ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
+          {isProcessing ? '処理中...' : '決済を確定する'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ==========================================
+// 🔍 メイン：予約検索画面コンポーネント
+// ==========================================
 
 export const BookingSearch = () => {
   // 「画面の4つの状態」を管理するState
@@ -25,6 +116,7 @@ export const BookingSearch = () => {
   const [isCancelled, setIsCancelled] = useState(false); // キャンセル完了状態
   const [isSearching, setIsSearching] = useState(false); // 検索中（ローディング）
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // エラー表示用
+  const [showPayment, setShowPayment] = useState(false); // 決済フォームの表示切替
 
   const { register, handleSubmit, getValues, formState: { errors } } = useForm<SearchFormData>();
 
@@ -34,6 +126,7 @@ export const BookingSearch = () => {
     setErrorMessage(null);
     setSearchResult(null);
     setIsCancelled(false);
+    setShowPayment(false);
 
     try {
       // GETではなくPOSTに変更し、データを直接Bodyに入れて送る
@@ -79,6 +172,12 @@ export const BookingSearch = () => {
     }
   };
 
+  // 決済成功時に検索結果を再取得する
+  const handlePaymentSuccess = () => {
+    setShowPayment(false);
+    onSearch(getValues());
+  };
+
   // ==========================================
   // 画面の切り替え（UI描画）
   // ==========================================
@@ -100,7 +199,7 @@ export const BookingSearch = () => {
     );
   }
 
-  // 状態1 & 2：検索フォームと検索結果画面
+  // 検索フォームと検索結果画面
   return (
     <div className="max-w-xl mx-auto p-6 bg-white rounded-lg shadow-sm mt-8 relative">
       <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">予約の確認・キャンセル</h2>
@@ -160,20 +259,50 @@ export const BookingSearch = () => {
                 <span className="text-red-600 font-bold">キャンセル済み</span>
               ) : searchResult.status}
             </p>
+
+            {/* ▼ 支払いステータスの表示 ▼ */}
+            <p>
+              <span className="font-bold">お支払い：</span>
+              {searchResult.payment_status === 'paid' ? (
+                <span className="text-green-600 font-bold">事前決済済み</span>
+              ) : searchResult.payment_status === 'refunded' ? (
+                <span className="text-gray-500">返金済み</span>
+              ) : (
+                <span className="text-orange-500 font-bold">当日店舗支払い（未決済）</span>
+              )}
+            </p>
           </div>
 
-          {searchResult.status !== 'cancelled' && (
-            <button 
-              onClick={() => setIsModalOpen(true)} // モーダルを開くスイッチ
-              className="w-full py-2 border border-red-500 text-red-500 rounded font-bold hover:bg-red-50 transition"
-            >
+          {/* ▼ 決済ボタン＆決済フォームの展開 ▼ */}
+          {searchResult.status !== 'cancelled' && searchResult.payment_status === 'unpaid' && (
+            <div className="mb-4">
+              {!showPayment ? (
+                <button onClick={() => setShowPayment(true)} className="w-full py-2 bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 transition shadow-sm">
+                  💳 オンラインで事前決済する
+                </button>
+              ) : (
+                // StripeのElementsプロバイダーで決済フォームを包む
+                <Elements stripe={stripePromise}>
+                  <CheckoutForm 
+                    booking={searchResult} 
+                    onSuccess={handlePaymentSuccess} 
+                    onCancel={() => setShowPayment(false)} 
+                  />
+                </Elements>
+              )}
+            </div>
+          )}
+
+          {/* キャンセルボタン（決済中は隠す） */}
+          {searchResult.status !== 'cancelled' && !showPayment && (
+            <button onClick={() => setIsModalOpen(true)} className="w-full py-2 border border-red-500 text-red-500 rounded font-bold hover:bg-red-50 transition mt-2">
               この予約をキャンセルする
             </button>
           )}
         </div>
       )}
 
-      {/* 状態3：キャンセル確認モーダル（isModalOpenがtrueの時だけ画面の上に重なって表示） */}
+      {/* キャンセル確認モーダル（isModalOpenがtrueの時だけ画面の上に重なって表示） */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg max-w-sm w-full shadow-xl">

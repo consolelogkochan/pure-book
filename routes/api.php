@@ -37,6 +37,8 @@ Route::get('/settings', [PublicSettingController::class, 'show']);
 Route::controller(BookingController::class)->group(function () {
     Route::post('/bookings', 'store');
     Route::post('/bookings/search', 'search');
+    Route::post('/bookings/{reference}/payment-intent', 'createPaymentIntent');
+    Route::post('/bookings/{reference}/verify-payment', 'verifyPayment');
     Route::delete('/bookings/{reference}', 'cancel');
 });
 

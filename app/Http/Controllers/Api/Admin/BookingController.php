@@ -11,8 +11,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
+use Stripe\Refund;
+use Stripe\Stripe;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
@@ -120,58 +121,80 @@ class BookingController extends Controller
             'customer_memo' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated, $id, $booking) {
-            $newStartTime = Carbon::parse($validated['start_time']);
-            // 選択されたメニューの所要時間を取得して、終了時刻を計算
-            $menu = Menu::findOrFail($validated['menu_id']);
-            $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
+        try {
+            return DB::transaction(function () use ($validated, $id, $booking) {
+                $newStartTime = Carbon::parse($validated['start_time']);
+                // 選択されたメニューの所要時間を取得して、終了時刻を計算
+                $menu = Menu::findOrFail($validated['menu_id']);
+                $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
 
-            // ステータスがキャンセルの場合は枠を空けるのでチェック不要
-            if ($validated['status'] !== 'cancelled') {
-                // 対象曜日の出勤スタッフ数を取得（Card19のロジックを再利用）
-                $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
+                // ステータスがキャンセルの場合は枠を空けるのでチェック不要
+                if ($validated['status'] !== 'cancelled') {
+                    $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
+                    $settings = Setting::first();
+                    $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
 
-                // Settingモデルから定休日を取得して比較！
-                $settings = Setting::first();
-                $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
+                    if (in_array($dayOfWeek, $regularHolidays)) {
+                        // トランザクション内で例外を投げてキャッチさせる
+                        throw new \Exception('指定された日付は店舗の定休日です。', 409);
+                    }
 
-                if (in_array($dayOfWeek, $regularHolidays)) {
-                    // フロントエンドの catch (error.response.status === 409) に引っ掛ける
-                    return response()->json(['message' => '指定された日付は店舗の定休日です。'], 409);
+                    $availableStaffCount = Staff::where('is_active', true)
+                        ->whereHas('schedule', function ($q) use ($dayOfWeek) {
+                            $q->where($dayOfWeek, true);
+                        })
+                        ->lockForUpdate()
+                        ->count();
+
+                    $overlappingBookings = Booking::where('id', '!=', $id)
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function ($query) use ($newStartTime, $newEndTime) {
+                            $query->where('start_time', '<', $newEndTime)
+                                ->where('end_time', '>', $newStartTime);
+                        })->count();
+
+                    if ($overlappingBookings >= $availableStaffCount) {
+                        throw new \Exception('この時間は予約枠が埋まっています。', 409);
+                    }
                 }
 
-                $availableStaffCount = Staff::where('is_active', true)
-                    ->whereHas('schedule', function ($q) use ($dayOfWeek) {
-                        $q->where($dayOfWeek, true);
-                    })
-                    ->lockForUpdate()
-                    ->count();
-
-                // 「自分自身（$id）を除外」して重複をカウント！
-                $overlappingBookings = Booking::where('id', '!=', $id) // 👈 これが超重要！
-                    ->where('status', '!=', 'cancelled')
-                    ->where(function ($query) use ($newStartTime, $newEndTime) {
-                        $query->where('start_time', '<', $newEndTime)
-                            ->where('end_time', '>', $newStartTime);
-                    })->count();
-
-                // 枠が溢れていたら409エラーで弾く
-                if ($overlappingBookings >= $availableStaffCount) {
-                    return response()->json(['message' => 'この時間は予約枠が埋まっています。'], 409);
+                // キャンセルへの変更、かつ支払い済みの場合の返金処理
+                if ($validated['status'] === 'cancelled' && $booking->status !== 'cancelled') {
+                    if ($booking->payment_status === 'paid' && $booking->stripe_payment_intent_id) {
+                        Stripe::setApiKey(config('services.stripe.secret'));
+                        try {
+                            Refund::create([
+                                'payment_intent' => $booking->stripe_payment_intent_id,
+                            ]);
+                            $booking->payment_status = 'refunded';
+                        } catch (\Exception $e) {
+                            // トランザクション内で例外を投げると、DBの変更が全て安全にロールバックされる
+                            throw new \Exception('Stripeでの返金処理に失敗したため、更新を中断しました。', 500);
+                        }
+                    }
                 }
-            }
 
-            // 検証を通過したら更新
-            $booking->update([
-                'start_time' => $newStartTime,
-                'end_time' => $newEndTime,
-                'menu_id' => $validated['menu_id'],
-                'status' => $validated['status'],
-                'customer_memo' => $validated['customer_memo'],
-            ]);
+                // 検証を通過したら更新
+                $booking->update([
+                    'start_time' => $newStartTime,
+                    'end_time' => $newEndTime,
+                    'menu_id' => $validated['menu_id'],
+                    'status' => $validated['status'],
+                    'customer_memo' => $validated['customer_memo'],
+                    'payment_status' => $booking->payment_status, // 返金後のステータスも保存
+                ]);
 
-            return response()->json(['message' => '予約を更新しました', 'booking' => $booking]);
-        });
+                return response()->json(['message' => '予約を更新しました', 'booking' => $booking]);
+            });
+
+        } catch (\Exception $e) {
+            // トランザクション内で投げられた例外（エラー）をここで一括で受け取り、フロントへ返す
+            $statusCode = $e->getCode() ?: 500;
+            // 409や500など、意図したステータスコードがない場合は500にする
+            $statusCode = in_array($statusCode, [400, 403, 404, 409, 500]) ? $statusCode : 500;
+
+            return response()->json(['message' => $e->getMessage()], $statusCode);
+        }
     }
 
     // 一覧検索API
@@ -267,7 +290,34 @@ class BookingController extends Controller
         ]);
 
         $booking = Booking::findOrFail($id);
-        $booking->update(['status' => $validated['status']]);
+
+        // 1. キャンセル処理の場合のみ、返金ロジックを挟む
+        if ($validated['status'] === 'cancelled') {
+
+            // 既にキャンセル済みの場合は何もしない
+            if ($booking->status === 'cancelled') {
+                return response()->json(['message' => 'この予約はすでにキャンセルされています。'], 400);
+            }
+
+            // 支払い済みなら、返金処理を実行（※DB更新の前に実行する！）
+            if ($booking->payment_status === 'paid' && $booking->stripe_payment_intent_id) {
+                Stripe::setApiKey(config('services.stripe.secret'));
+                try {
+                    Refund::create([
+                        'payment_intent' => $booking->stripe_payment_intent_id,
+                    ]);
+                    // 返金成功時のみ、メモリ上のステータスを変更
+                    $booking->payment_status = 'refunded';
+                } catch (\Exception $e) {
+                    // 返金エラー時はステータス変更を中断し、管理者にエラーを伝える
+                    return response()->json(['message' => 'Stripeでの返金処理に失敗したため、キャンセルを中断しました。'], 500);
+                }
+            }
+        }
+
+        // 2. DBの更新（ステータスを一括保存）
+        $booking->status = $validated['status'];
+        $booking->save();
 
         return response()->json(['message' => 'ステータスを更新しました', 'booking' => $booking]);
     }

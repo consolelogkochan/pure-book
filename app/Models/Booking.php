@@ -15,6 +15,7 @@ class Booking extends Model
         'booking_reference', 'user_id', 'staff_id', 'menu_id',
         'start_time', 'end_time', 'customer_name', 'customer_email',
         'customer_phone', 'customer_memo', 'survey_responses', 'status',
+        'payment_status', 'stripe_payment_intent_id',
     ];
 
     protected function casts(): array

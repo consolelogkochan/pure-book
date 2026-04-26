@@ -15,6 +15,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Stripe\PaymentIntent;
+use Stripe\Refund;
+use Stripe\Stripe;
 
 class BookingController extends Controller
 {
@@ -116,7 +119,7 @@ class BookingController extends Controller
         }
     }
 
-    // ▼ここから追加：予約照会メソッド▼
+    // 予約照会メソッド
     public function search(Request $request): JsonResponse
     {
         // 1. 予約番号、メールアドレスの入力データを受け取る（推論通り！）
@@ -146,7 +149,67 @@ class BookingController extends Controller
         ]);
     }
 
-    // ▼ここから追加：予約キャンセルメソッド▼
+    /**
+     * 決済の準備（PaymentIntentの作成）
+     */
+    public function createPaymentIntent(string $reference): JsonResponse
+    {
+        $booking = Booking::with('menu')->where('booking_reference', $reference)->firstOrFail();
+
+        // 既に支払い済みならエラー
+        if ($booking->payment_status === 'paid') {
+            return response()->json(['message' => '既に支払い済みです。'], 400);
+        }
+
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        /** @var Menu $menu */
+        $menu = $booking->menu;
+
+        // Stripe側に「この予約のために、この金額の決済を準備して」と依頼
+        $paymentIntent = PaymentIntent::create([
+            'amount' => $menu->price,
+            'currency' => 'jpy',
+            'metadata' => [
+                'booking_id' => (string) $booking->id,
+                'booking_reference' => $booking->booking_reference,
+            ],
+        ]);
+
+        return response()->json([
+            'clientSecret' => $paymentIntent->client_secret, // これがフロントで必要
+        ]);
+    }
+
+    /**
+     * 決済の検証とDB更新
+     */
+    public function verifyPayment(Request $request, string $reference): JsonResponse
+    {
+        $validated = $request->validate([
+            'payment_intent_id' => 'required|string',
+        ]);
+
+        $booking = Booking::where('booking_reference', $reference)->firstOrFail();
+
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        // フロントを信じず、StripeのAPIに直接確認する
+        $intent = PaymentIntent::retrieve($validated['payment_intent_id']);
+
+        if ($intent->status === 'succeeded') {
+            $booking->update([
+                'payment_status' => 'paid',
+                'stripe_payment_intent_id' => $intent->id,
+            ]);
+
+            return response()->json(['message' => '決済を確認しました！', 'booking' => $booking]);
+        }
+
+        return response()->json(['message' => '決済が完了していないか、失敗しました。'], 400);
+    }
+
+    // 予約キャンセルメソッド
     public function cancel(Request $request, string $reference): JsonResponse
     {
         // セキュリティ対策：誰でもキャンセルできないよう、メールアドレスも一緒に送ってもらいます
@@ -180,13 +243,30 @@ class BookingController extends Controller
             ], 403);
         }
 
-        // 3. キャンセル処理を通す（status を cancelled に更新）
-        $booking->update(['status' => 'cancelled']);
+        // 3.支払い済みなら、返金処理を実行
+        if ($booking->payment_status === 'paid' && $booking->stripe_payment_intent_id) {
+            Stripe::setApiKey(config('services.stripe.secret'));
+            try {
+                Refund::create([
+                    'payment_intent' => $booking->stripe_payment_intent_id,
+                ]);
+                // 返金成功時のみ、メモリ上のステータスを変更（まだDBには保存しない）
+                $booking->payment_status = 'refunded';
+            } catch (\Exception $e) {
+                // 返金エラー時はログに残し、ステータス更新を止める等の判断が必要
+                return response()->json(['message' => '返金処理中にエラーが発生しました。'], 500);
+            }
+        }
 
-        // 4.非同期でキャンセル完了メールを送信する指示（キューに投げる）
+        // 4. DBの更新（ステータスを cancelled に更新し、一括保存）
+        // ※返金が成功した、または未決済だった場合のみここへ到達します
+        $booking->status = 'cancelled';
+        $booking->save();
+
+        // 5.非同期でキャンセル完了メールを送信する指示（キューに投げる）
         Mail::to($booking->customer_email)->queue(new BookingCancelled($booking));
 
-        // 5. キャンセル成功のテキストを返す
+        // 6. キャンセル成功のテキストを返す
         return response()->json([
             'message' => '予約のキャンセルが完了しました。',
             'booking' => $booking,

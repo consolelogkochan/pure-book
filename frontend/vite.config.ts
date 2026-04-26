@@ -8,4 +8,8 @@ export default defineConfig({
     react(), 
     tailwindcss(), // 👈 これを追加
   ],
+  // Reactの二重読み込みを強制的に防ぐ（Dedupe）
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
 })
