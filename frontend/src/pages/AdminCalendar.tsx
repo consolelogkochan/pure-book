@@ -189,8 +189,12 @@ export const AdminCalendar = () => {
               ✕ 閉じる
             </button>
           </div>
-          {/* ▼変更：全体を <form> で囲み、onSubmit に関数を紐付ける */}
-          <form onSubmit={handleUpdate} className="flex flex-col h-full overflow-hidden">
+          {/* 全体を <form> で囲み、onSubmit に関数を紐付ける */}
+          <form
+          key={selectedBooking?.id || 'new'} 
+          onSubmit={handleUpdate} 
+          className="flex flex-col h-full overflow-hidden"
+          >
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {!selectedBooking?.isNew && (
                 <div className="bg-slate-100 p-3 rounded text-sm text-slate-600 font-mono flex justify-between items-center">
@@ -226,7 +230,7 @@ export const AdminCalendar = () => {
                    予約内容の編集
                 </h4>
                 
-                {/* ▼変更：メニューをセレクトボックスにする */}
+                {/* メニューをセレクトボックスにする */}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">メニュー</label>
                   <select 

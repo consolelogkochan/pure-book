@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreBookingRequest; // さっき作った門番
 use App\Mail\BookingCancelled;
 use App\Mail\BookingConfirmed;
+use App\Mail\PaymentCompleted;
 use App\Models\Booking;
 use App\Models\Menu;
 use App\Models\Staff;
@@ -190,7 +191,8 @@ class BookingController extends Controller
             'payment_intent_id' => 'required|string',
         ]);
 
-        $booking = Booking::where('booking_reference', $reference)->firstOrFail();
+        // 💡 メール送信時にメニュー情報(価格など)が必要になるため、with('menu') を追加します
+        $booking = Booking::with('menu')->where('booking_reference', $reference)->firstOrFail();
 
         Stripe::setApiKey(config('services.stripe.secret'));
 
@@ -202,6 +204,9 @@ class BookingController extends Controller
                 'payment_status' => 'paid',
                 'stripe_payment_intent_id' => $intent->id,
             ]);
+
+            // 非同期で決済完了メールを送信する指示（キューに投げる）
+            Mail::to($booking->customer_email)->queue(new PaymentCompleted($booking));
 
             return response()->json(['message' => '決済を確認しました！', 'booking' => $booking]);
         }
