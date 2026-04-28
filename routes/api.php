@@ -35,11 +35,14 @@ Route::get('/survey-questions', [PublicSurveyQuestionController::class, 'index']
 Route::get('/settings', [PublicSettingController::class, 'show']);
 // ▼ リファクタリング：同じコントローラーはまとめる
 Route::controller(BookingController::class)->group(function () {
-    Route::post('/bookings', 'store');
-    Route::post('/bookings/search', 'search');
+    // 新規予約作成（1分間に3回まで）
+    Route::post('/bookings', 'store')->middleware('throttle:3,1');
+    // 予約検索（1分間に10回まで）
+    Route::post('/bookings/search', 'search')->middleware('throttle:10,1');
     Route::post('/bookings/{reference}/payment-intent', 'createPaymentIntent');
     Route::post('/bookings/{reference}/verify-payment', 'verifyPayment');
-    Route::delete('/bookings/{reference}', 'cancel');
+    // キャンセル（1分間に5回まで）
+    Route::delete('/bookings/{reference}', 'cancel')->middleware('throttle:5,1');
 });
 
 /*
@@ -47,8 +50,8 @@ Route::controller(BookingController::class)->group(function () {
 | 管理者向けAPI
 |--------------------------------------------------------------------------
 */
-// 管理者ログイン（誰でもアクセス可能）
-Route::post('/admin/login', [AuthController::class, 'login']);
+// ▼ 管理者用ログイン（1分間に5回まで）
+Route::post('/admin/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // 管理者ログアウト（ログイン済みの人だけアクセス可能）
 Route::post('/admin/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');

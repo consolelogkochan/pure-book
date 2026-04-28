@@ -46,7 +46,6 @@ export const BookingWizard = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<BookingFormData>();
 
   useEffect(() => {
-    // ▼ 修正：メニューとアンケートの両方を同時に取得する
     const fetchData = async () => {
       try {
         const [menusRes, surveyRes, settingsRes] = await Promise.all([
@@ -109,7 +108,7 @@ export const BookingWizard = () => {
     const day = String(selectedDate.getDate()).padStart(2, '0');
     const startTime = `${year}-${month}-${day} ${selectedTime}:00`;
 
-    // ▼ 追加：動的アンケートの回答をキレイなオブジェクトにまとめる
+    // 動的アンケートの回答をキレイなオブジェクトにまとめる
     const formattedSurveyResponses: Record<string, any> = {};
     surveyQuestions.forEach(q => {
       // フォームの入力データから "survey_1" などのキーを探す
@@ -139,7 +138,13 @@ export const BookingWizard = () => {
       setCompletedBookingRef(response.data.booking.booking_reference);
       
     } catch (error: any) {
-      // 4. 【推論実装】409エラー時のUX
+      // 4. 429エラー（レートリミット）のハンドリング
+      if (error.response && error.response.status === 429) {
+        alert('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
+        return;
+      }
+
+      // 5. 409エラー時のUX
       if (error.response && error.response.status === 409) {
         alert('申し訳ありません！タッチの差でこの時間は埋まってしまいました。別の時間をお選びください。');
         // 現在選ばれている日付をそのまま渡して、空き時間再取得APIをもう一度叩き直す！

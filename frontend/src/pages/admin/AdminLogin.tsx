@@ -39,12 +39,17 @@ export default function AdminLogin() {
             // 管理者のダッシュボードへ遷移
             navigate('/admin/calendar'); 
 
-        } catch (err) {
+        } catch (error: any) {
+            // ▼ 追加：429エラー（レートリミット）のハンドリング
+            if (error.response && error.response.status === 429) {
+                alert('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
+                return;
+            }
             // エラーがAxiosのエラーであるか（ネットワークエラー等ではないか）を厳格にチェック
-            if (isAxiosError(err)) {
-                if (err.response?.status === 401 || err.response?.status === 403) {
+            if (isAxiosError(error)) {
+                if (error.response?.status === 401 || error.response?.status === 403) {
                     // サーバーからのエラーメッセージ、またはデフォルトのメッセージをセット
-                    setError(err.response.data?.message || '認証に失敗しました。');
+                    setError(error.response.data?.message || '認証に失敗しました。');
                 } else {
                     setError('ログインに失敗しました。通信環境をご確認ください。');
                 }

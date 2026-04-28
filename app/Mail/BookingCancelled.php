@@ -15,6 +15,7 @@ class BookingCancelled extends Mailable
     use Queueable, SerializesModels;
 
     public Booking $booking;
+
     public string $paymentStatus;
 
     public function __construct(Booking $booking)

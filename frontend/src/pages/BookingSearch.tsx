@@ -136,6 +136,12 @@ export const BookingSearch = () => {
       });
       setSearchResult(response.data.booking);
     } catch (error: any) {
+      // 429エラー（レートリミット）のハンドリング
+      if (error.response && error.response.status === 429) {
+        alert('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
+        return;
+      }
+
       if (error.response && error.response.status === 404) {
         setErrorMessage('ご指定の予約が見つかりませんでした。入力内容をご確認ください。');
       } else {
@@ -161,6 +167,12 @@ export const BookingSearch = () => {
       setIsCancelled(true); // キャンセル完了画面に切り替える
     } catch (error: any) {
       setIsModalOpen(false); // エラー時もまずはモーダルを閉じる
+
+      // 429エラー（レートリミット）のハンドリング
+      if (error.response && error.response.status === 429) {
+        alert('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
+        return;
+      }
 
       // Laravelから具体的なエラーメッセージ（403, 404, 400など）が返ってきているかチェック
       if (error.response && error.response.data && error.response.data.message) {
