@@ -113,6 +113,11 @@ class BookingController extends Controller
     {
         $booking = Booking::findOrFail($id);
 
+        // 過去の予約の編集をブロック（Fail Fast）
+        if (now()->greaterThan($booking->end_time)) {
+            return response()->json(['message' => '終了時刻を過ぎた予約は編集・キャンセルできません。'], 403);
+        }
+
         // 送られてきたデータの検証
         $validated = $request->validate([
             'start_time' => 'required|date|after:now',
@@ -232,7 +237,7 @@ class BookingController extends Controller
             fwrite($file, "\xEF\xBB\xBF");
 
             // CSVの1行目（ヘッダー）
-            fputcsv($file, ['予約番号', '予約日時', 'お名前', '電話番号', 'メール', 'メニュー', 'ステータス', '店舗メモ', 'アンケート回答']);
+            fputcsv($file, ['予約番号', '予約日時', 'お名前', '電話番号', 'メール', 'メニュー', 'ステータス', '決済ステータス', '店舗メモ', 'アンケート回答']);
 
             // データ行
             foreach ($bookings as $booking) {
@@ -264,6 +269,13 @@ class BookingController extends Controller
                 $menu = $booking->menu;
                 $menuName = $menu ? $menu->name : '';
 
+                // 決済ステータスを日本語に翻訳
+                $paymentStatusText = match ($booking->payment_status) {
+                    'paid' => '事前決済済',
+                    'refunded' => '返金済',
+                    default => '未決済',
+                };
+
                 fputcsv($file, [
                     $booking->booking_reference,
                     $startTime,
@@ -272,6 +284,7 @@ class BookingController extends Controller
                     $booking->customer_email,
                     $menuName,
                     $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
+                    $paymentStatusText,
                     (string) $booking->customer_memo, // nullの可能性があるので明示的にstringへキャスト
                     $surveyText,
                 ]);
@@ -290,6 +303,11 @@ class BookingController extends Controller
         ]);
 
         $booking = Booking::findOrFail($id);
+
+        // 過去の予約のステータス変更をブロック（Fail Fast）
+        if (now()->greaterThan($booking->end_time)) {
+            return response()->json(['message' => '終了時刻を過ぎた予約は操作できません。'], 403);
+        }
 
         // 1. キャンセル処理の場合のみ、返金ロジックを挟む
         if ($validated['status'] === 'cancelled') {

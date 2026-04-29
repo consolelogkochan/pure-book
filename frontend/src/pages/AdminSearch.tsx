@@ -105,9 +105,13 @@ export const AdminSearch = () => {
       setResults(prevResults => 
         prevResults.map(r => r.id === id ? { ...r, status: newStatus } : r)
       );
-    } catch (error) {
-      alert('ステータスの更新に失敗しました');
-      console.error(error);
+    } catch (error: any) {
+      // Laravelからの具体的なエラーメッセージがあればそれを表示する
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(error.response.data.message);
+      } else {
+        alert('ステータスの更新に失敗しました');
+      }
     }
   };
 
@@ -187,6 +191,7 @@ export const AdminSearch = () => {
                   <th className="p-4 font-bold text-sm text-slate-600">メニュー</th>
                   <th className="p-4 font-bold text-sm text-slate-600">担当</th>
                   <th className="p-4 font-bold text-sm text-slate-600">アンケート回答</th>
+                  <th className="p-4 font-bold text-sm text-slate-600">決済</th>
                   <th className="p-4 font-bold text-sm text-slate-600">ステータス</th>
                 </tr>
               </thead>
@@ -206,6 +211,17 @@ export const AdminSearch = () => {
                         {formatSurveyResponse(result.survey_responses) !== 'なし' 
                           ? formatSurveyResponse(result.survey_responses) 
                           : <span className="text-slate-300">-</span>}
+                      </td>
+                      {/* 決済ステータスバッジ */}
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-xs font-bold whitespace-nowrap ${
+                          result.payment_status === 'paid' ? 'bg-indigo-100 text-indigo-700' : 
+                          result.payment_status === 'refunded' ? 'bg-red-100 text-red-700' : 
+                          'bg-slate-100 text-slate-600'
+                        }`}>
+                          {result.payment_status === 'paid' ? '事前決済済' : 
+                           result.payment_status === 'refunded' ? '返金済' : '未決済'}
+                        </span>
                       </td>
                       <td className="p-4">
                         <select 

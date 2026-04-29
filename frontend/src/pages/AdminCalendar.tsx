@@ -106,10 +106,11 @@ export const AdminCalendar = () => {
         calendarRef.current.getApi().refetchEvents();
       }
     } catch (error: any) {
-      if (error.response && error.response.status === 409) {
-        alert(error.response.data.message); // 「この時間は予約枠が埋まっています」を表示
+      // Laravelからの具体的なエラーメッセージがあればそれを表示する
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(error.response.data.message);
       } else {
-        alert('更新に失敗しました。');
+        alert('ステータスの更新に失敗しました');
       }
     }
   };
@@ -199,9 +200,20 @@ export const AdminCalendar = () => {
               {!selectedBooking?.isNew && (
                 <div className="bg-slate-100 p-3 rounded text-sm text-slate-600 font-mono flex justify-between items-center">
                   <span>予約番号: {selectedBooking?.booking_reference}</span>
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${selectedBooking?.status === 'cancelled' ? 'bg-slate-200 text-slate-600' : 'bg-green-100 text-green-700'}`}>
-                    {selectedBooking?.status === 'cancelled' ? 'キャンセル済' : '予約確定'}
-                  </span>
+                  <div className="flex gap-2">
+                    {/* 決済ステータスバッジ */}
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                      selectedBooking?.payment_status === 'paid' ? 'bg-indigo-100 text-indigo-700' : 
+                      selectedBooking?.payment_status === 'refunded' ? 'bg-red-100 text-red-700' : 
+                      'bg-slate-200 text-slate-600'
+                    }`}>
+                      {selectedBooking?.payment_status === 'paid' ? '事前決済済' : 
+                       selectedBooking?.payment_status === 'refunded' ? '返金済' : '未決済'}
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${selectedBooking?.status === 'cancelled' ? 'bg-slate-200 text-slate-600' : 'bg-green-100 text-green-700'}`}>
+                      {selectedBooking?.status === 'cancelled' ? 'キャンセル済' : '予約確定'}
+                    </span>
+                  </div>
                 </div>
               )}
               
