@@ -165,7 +165,7 @@ class BookingController extends Controller
         $paymentIntent = $stripeService->createPaymentIntent(
             $menu->price,
             [
-                'booking_id'        => (string) $booking->id,
+                'booking_id' => (string) $booking->id,
                 'booking_reference' => $booking->booking_reference,
             ]
         );
@@ -190,7 +190,7 @@ class BookingController extends Controller
 
         if ($intent->status === 'succeeded') {
             $booking->update([
-                'payment_status'           => 'paid',
+                'payment_status' => 'paid',
                 'stripe_payment_intent_id' => $intent->id,
             ]);
 

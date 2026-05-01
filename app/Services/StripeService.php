@@ -20,7 +20,7 @@ class StripeService
     public function createPaymentIntent(int $amount, array $metadata): PaymentIntent
     {
         return $this->stripe->paymentIntents->create([
-            'amount'   => $amount,
+            'amount' => $amount,
             'currency' => 'jpy',
             'metadata' => $metadata,
         ]);
@@ -44,7 +44,7 @@ class StripeService
                 'payment_intent' => $paymentIntentId,
             ]);
         } catch (\Exception $e) {
-            throw new \Exception('Stripeでの返金処理に失敗しました: ' . $e->getMessage());
+            throw new \Exception('Stripeでの返金処理に失敗しました: '.$e->getMessage());
         }
     }
 }

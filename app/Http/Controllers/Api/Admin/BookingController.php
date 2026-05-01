@@ -7,12 +7,12 @@ use App\Models\Booking;
 use App\Models\Menu;
 use App\Models\Setting;
 use App\Models\Staff;
+use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Services\StripeService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
