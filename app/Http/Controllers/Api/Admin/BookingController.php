@@ -12,8 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Stripe\Refund;
-use Stripe\Stripe;
+use App\Services\StripeService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
@@ -109,7 +108,7 @@ class BookingController extends Controller
         });
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(Request $request, string $id, StripeService $stripeService): JsonResponse
     {
         $booking = Booking::findOrFail($id);
 
@@ -127,7 +126,7 @@ class BookingController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($validated, $id, $booking) {
+            return DB::transaction(function () use ($validated, $id, $booking, $stripeService) {
                 $newStartTime = Carbon::parse($validated['start_time']);
                 // 選択されたメニューの所要時間を取得して、終了時刻を計算
                 $menu = Menu::findOrFail($validated['menu_id']);
@@ -166,14 +165,10 @@ class BookingController extends Controller
                 // キャンセルへの変更、かつ支払い済みの場合の返金処理
                 if ($validated['status'] === 'cancelled' && $booking->status !== 'cancelled') {
                     if ($booking->payment_status === 'paid' && $booking->stripe_payment_intent_id) {
-                        Stripe::setApiKey(config('services.stripe.secret'));
                         try {
-                            Refund::create([
-                                'payment_intent' => $booking->stripe_payment_intent_id,
-                            ]);
+                            $stripeService->refund($booking->stripe_payment_intent_id);
                             $booking->payment_status = 'refunded';
                         } catch (\Exception $e) {
-                            // トランザクション内で例外を投げると、DBの変更が全て安全にロールバックされる
                             throw new \Exception('Stripeでの返金処理に失敗したため、更新を中断しました。', 500);
                         }
                     }
@@ -296,7 +291,7 @@ class BookingController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function updateStatus(Request $request, string $id): JsonResponse
+    public function updateStatus(Request $request, string $id, StripeService $stripeService): JsonResponse
     {
         $validated = $request->validate([
             'status' => 'required|in:pending,confirmed,cancelled',
@@ -319,15 +314,10 @@ class BookingController extends Controller
 
             // 支払い済みなら、返金処理を実行（※DB更新の前に実行する！）
             if ($booking->payment_status === 'paid' && $booking->stripe_payment_intent_id) {
-                Stripe::setApiKey(config('services.stripe.secret'));
                 try {
-                    Refund::create([
-                        'payment_intent' => $booking->stripe_payment_intent_id,
-                    ]);
-                    // 返金成功時のみ、メモリ上のステータスを変更
+                    $stripeService->refund($booking->stripe_payment_intent_id);
                     $booking->payment_status = 'refunded';
                 } catch (\Exception $e) {
-                    // 返金エラー時はステータス変更を中断し、管理者にエラーを伝える
                     return response()->json(['message' => 'Stripeでの返金処理に失敗したため、キャンセルを中断しました。'], 500);
                 }
             }
