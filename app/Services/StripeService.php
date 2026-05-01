@@ -16,6 +16,8 @@ class StripeService
 
     /**
      * PaymentIntentを生成し、フロントエンドに渡すclientSecretを取得する
+     *
+     * @param array<string, string> $metadata
      */
     public function createPaymentIntent(int $amount, array $metadata): PaymentIntent
     {
