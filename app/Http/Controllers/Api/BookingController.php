@@ -9,7 +9,7 @@ use App\Mail\BookingConfirmed;
 use App\Mail\PaymentCompleted;
 use App\Models\Booking;
 use App\Models\Menu;
-use App\Models\Staff;
+use App\Services\BookingService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
-    public function store(StoreBookingRequest $request): JsonResponse
+    public function store(StoreBookingRequest $request, BookingService $bookingService): JsonResponse
     {
         // 1. 門番を通過した安全なデータだけを取得
         $validated = $request->validated();
@@ -28,27 +28,14 @@ class BookingController extends Controller
         $menu = Menu::findOrFail($validated['menu_id']);
         $startTime = Carbon::parse($validated['start_time']);
         $endTime = $startTime->copy()->addMinutes($menu->duration_minutes);
-        $requestedStaffId = $validated['staff_id'] ?? null;
-
-        // ▼ 追加：リクエストされた日時の「曜日（英語の小文字）」を取得（例: 'monday'）
+        $requestedStaffId = isset($validated['staff_id']) ? (int) $validated['staff_id'] : null;
         $dayOfWeek = strtolower($startTime->englishDayOfWeek);
 
         try {
-            // ▼ここから「トランザクション」開始
-            // 途中でエラーが起きたら、DBへの変更をすべて「なかったこと（ロールバック）」にします
-            $booking = DB::transaction(function () use ($validated, $menu, $startTime, $endTime, $requestedStaffId, $dayOfWeek) {
+            $booking = DB::transaction(function () use ($validated, $menu, $startTime, $endTime, $requestedStaffId, $dayOfWeek, $bookingService) {
 
                 // 2. 排他制御（悲観的ロック）＋ シフト（曜日）のチェック
-                $query = Staff::where('is_active', true)
-                    // ▼ 追加：scheduleテーブルを覗きに行き、該当の曜日が true(出勤) のスタッフに絞り込む
-                    ->whereHas('schedule', function ($q) use ($dayOfWeek) {
-                        $q->where($dayOfWeek, true);
-                    })
-                    ->lockForUpdate();
-                if ($requestedStaffId) {
-                    $query->where('id', $requestedStaffId);
-                }
-                $availableStaffs = $query->get();
+                $availableStaffs = $bookingService->getAvailableStaffs($dayOfWeek, $requestedStaffId);
 
                 if ($availableStaffs->isEmpty()) {
                     throw new \Exception('指定された日時はスタッフがお休み、または条件に合うスタッフが見つかりません。');
