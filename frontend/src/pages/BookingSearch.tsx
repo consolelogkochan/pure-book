@@ -42,7 +42,7 @@ const CheckoutForm = ({ booking, onSuccess, onCancel }: { booking: Booking, onSu
 
     try {
       // 1. Laravelから決済の準備情報（clientSecret）をもらう
-      const intentRes = await axios.post(`/api/bookings/${booking.booking_reference}/payment-intent`);
+      const intentRes = await axios.post(`/bookings/${booking.booking_reference}/payment-intent`);
       const clientSecret = intentRes.data.clientSecret;
 
       const cardElement = elements.getElement('card');
@@ -67,7 +67,7 @@ const CheckoutForm = ({ booking, onSuccess, onCancel }: { booking: Booking, onSu
 
       if (paymentResult.paymentIntent?.status === 'succeeded') {
         // 3. Laravelに「決済成功したから確認してDBを更新して！」と伝える
-        await axios.post(`/api/bookings/${booking.booking_reference}/verify-payment`, {
+        await axios.post(`/bookings/${booking.booking_reference}/verify-payment`, {
           payment_intent_id: paymentResult.paymentIntent.id,
         });
         
@@ -130,7 +130,7 @@ export const BookingSearch = () => {
 
     try {
       // GETではなくPOSTに変更し、データを直接Bodyに入れて送る
-      const response = await axios.post('http://localhost/api/bookings/search', {
+      const response = await axios.post('/bookings/search', {
         booking_reference: data.booking_reference,
         email: data.email
       });
@@ -159,7 +159,7 @@ export const BookingSearch = () => {
     try {
       // 予約番号とメールアドレスを再度送って本人確認しながらキャンセル
       // ※AxiosのDELETEでBody（データ）を送る場合は、{ data: {...} } という書き方をします
-      await axios.delete(`http://localhost/api/bookings/${searchResult.booking_reference}`, {
+      await axios.delete(`/bookings/${searchResult.booking_reference}`, {
         data: { email: getValues('email') }
       });
       

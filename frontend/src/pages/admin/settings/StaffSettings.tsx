@@ -21,7 +21,7 @@ export const StaffSettings = () => {
   // 一覧取得
   const fetchStaffs = async () => {
     try {
-      const res = await axios.get('http://localhost/api/admin/staffs');
+      const res = await axios.get('/admin/staffs');
       setStaffs(res.data);
     } catch (error) {
       console.error('スタッフの取得に失敗しました', error);
@@ -40,7 +40,7 @@ export const StaffSettings = () => {
     if (!window.confirm(`本当に「${staff.name}」を${actionText}にしますか？`)) return;
 
     try {
-      await axios.patch(`http://localhost/api/admin/staffs/${staff.id}/toggle-status`, {}, {
+      await axios.patch(`/admin/staffs/${staff.id}/toggle-status`, {}, {
         headers: { 'Accept': 'application/json' }
       });
       fetchStaffs();
@@ -63,8 +63,8 @@ export const StaffSettings = () => {
   // 保存処理
   const handleSave = async () => {
     const url = editingStaff 
-      ? `http://localhost/api/admin/staffs/${editingStaff.id}` 
-      : 'http://localhost/api/admin/staffs';
+      ? `/admin/staffs/${editingStaff.id}` 
+      : '/admin/staffs';
     const method = editingStaff ? 'put' : 'post';
 
     try {

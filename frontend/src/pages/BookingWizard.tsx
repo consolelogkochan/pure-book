@@ -49,9 +49,9 @@ export const BookingWizard = () => {
     const fetchData = async () => {
       try {
         const [menusRes, surveyRes, settingsRes] = await Promise.all([
-          axios.get('http://localhost/api/menus'),
-          axios.get('http://localhost/api/survey-questions'),
-          axios.get('http://localhost/api/settings')
+          axios.get('/menus'),
+          axios.get('/survey-questions'),
+          axios.get('/settings')
         ]);
         
         setMenus(menusRes.data.menus || menusRes.data || []);
@@ -87,7 +87,7 @@ export const BookingWizard = () => {
     const dateString = `${year}-${month}-${day}`;
 
     try {
-      const response = await axios.get(`http://localhost/api/available-slots`, {
+      const response = await axios.get(`/available-slots`, {
         params: { date: dateString, menu_id: selectedMenu.id }
       });
       setAvailableSlots(response.data.available_slots || response.data || []);
@@ -132,7 +132,7 @@ export const BookingWizard = () => {
 
     try {
       // 3. APIへPOST送信！
-      const response = await axios.post('http://localhost/api/bookings', payload);
+      const response = await axios.post('/bookings', payload);
       
       // 成功したら、予約番号をセットして完了画面に切り替える
       setCompletedBookingRef(response.data.booking.booking_reference);

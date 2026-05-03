@@ -25,7 +25,7 @@ export const MenusSettings = () => {
   // 1. 初回マウント時にメニュー一覧を取得
   const fetchMenus = async () => {
     try {
-      const res = await axios.get('http://localhost/api/admin/menus');
+      const res = await axios.get('/admin/menus');
       setMenus(res.data);
     } catch (error) {
       console.error('メニューの取得に失敗しました', error);
@@ -44,7 +44,7 @@ export const MenusSettings = () => {
     if (!window.confirm(`本当に「${menu.name}」を${actionText}にしますか？`)) return;
 
     try {
-      await axios.patch(`http://localhost/api/admin/menus/${menu.id}/toggle-status`, {}, {
+      await axios.patch(`/admin/menus/${menu.id}/toggle-status`, {}, {
         headers: { 'Accept': 'application/json' },
       });
       fetchMenus(); // 成功したら一覧を再取得して画面を更新
@@ -68,8 +68,8 @@ export const MenusSettings = () => {
   // 4. 保存処理（新規作成 or 更新）
   const handleSave = async () => {
     const url = editingMenu 
-      ? `http://localhost/api/admin/menus/${editingMenu.id}` 
-      : 'http://localhost/api/admin/menus';
+      ? `/admin/menus/${editingMenu.id}` 
+      : '/admin/menus';
     
     const method = editingMenu ? 'put' : 'post';
 

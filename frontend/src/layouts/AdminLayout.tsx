@@ -24,7 +24,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
     try {
       // 1. Laravel側にログアウトをリクエスト（セッション・Cookieの破棄）
-      await axios.post('/api/admin/logout');
+      await axios.post('/admin/logout');
     } catch (error) {
       console.error('ログアウト通信エラー:', error);
     } finally {

@@ -18,17 +18,17 @@ export default function AdminLogin() {
         setError('');
 
         try {
-            // 1. まずはCSRFトークンを取得（挨拶）
-            await axios.get('/sanctum/csrf-cookie');
+            // 1. まずはCSRFトークンを取得（/api 配下でないため絶対URLで指定）
+            await axios.get(import.meta.env.VITE_APP_URL + '/sanctum/csrf-cookie');
 
             // 2. ログインを実行（本番）
-            const response = await axios.post('/api/admin/login', {
+            const response = await axios.post('/admin/login', {
                 email,
                 password,
             });
 
             // Laravelのログイン成功直後に、ユーザー情報を取得してReactの記憶を更新する
-            const userResponse = await axios.get('/api/user');
+            const userResponse = await axios.get('/user');
             setUser(userResponse.data);
 
             // ログイン成功時の処理

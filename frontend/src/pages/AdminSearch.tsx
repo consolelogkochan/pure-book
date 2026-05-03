@@ -26,7 +26,7 @@ export const AdminSearch = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const menusRes = await axios.get('http://localhost/api/menus');
+        const menusRes = await axios.get('/menus');
         setMenus(menusRes.data.menus || menusRes.data || []);
         
         // 初期状態（条件なし）で検索を実行しておく
@@ -42,7 +42,7 @@ export const AdminSearch = () => {
   const fetchSearchResults = async (params: any, page: number = 1) => {
     setIsLoading(true);
     try {
-      const res = await axios.get('http://localhost/api/admin/bookings/search', { 
+      const res = await axios.get('/admin/bookings/search', { 
         params: { ...params, page } 
       });
       // Laravelの paginate() を使うと、データ本体は .data の中に入る
@@ -70,7 +70,7 @@ export const AdminSearch = () => {
     
     try {
       // responseType: 'blob' が超重要！バイナリデータとして受け取るようAxiosに指示
-      const response = await axios.get('http://localhost/api/admin/bookings/csv', {
+      const response = await axios.get('/admin/bookings/csv', {
         params: currentParams,
         responseType: 'blob',
       });
@@ -98,7 +98,7 @@ export const AdminSearch = () => {
   // 一覧画面から直接ステータスを変更する機能
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
-      await axios.patch(`http://localhost/api/admin/bookings/${id}/status`, { status: newStatus });
+      await axios.patch(`/admin/bookings/${id}/status`, { status: newStatus });
       alert('ステータスを更新しました');
       
       // 再検索せず、画面上のデータだけを書き換えて通信を節約する

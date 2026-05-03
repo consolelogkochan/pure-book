@@ -2,7 +2,7 @@ import Axios from 'axios';
 
 // baseURLやCookieの設定をあらかじめ済ませた「専用のaxios」を作る
 const axios = Axios.create({
-    baseURL: 'http://localhost', // Laravelの住所
+    baseURL: import.meta.env.VITE_API_BASE_URL,
     headers: {
         'X-Requested-With': 'XMLHttpRequest',
     },

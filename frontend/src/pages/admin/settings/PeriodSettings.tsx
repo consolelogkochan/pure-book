@@ -32,7 +32,7 @@ export const PeriodSettings = () => {
   // 1. 初回マウント時に設定を"すべて"取得
   const fetchSettings = async () => {
     try {
-      const res = await axios.get('http://localhost/api/admin/settings');
+      const res = await axios.get('/admin/settings');
       setFormData({
         open_time: res.data.open_time.substring(0, 5),
         close_time: res.data.close_time.substring(0, 5),
@@ -58,7 +58,7 @@ export const PeriodSettings = () => {
   // 2. 保存処理（見えないデータも含めて"すべて"送り返す）
   const handleSave = async () => {
     try {
-      await axios.put('http://localhost/api/admin/settings', formData, {
+      await axios.put('/admin/settings', formData, {
         headers: { 'Accept': 'application/json' },
       });
       alert('予約受付ルールを保存しました！');

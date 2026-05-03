@@ -33,7 +33,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const checkAuth = async () => {
             try {
                 // Laravelにログイン状態を確認する（Sanctumの標準API）
-                const res = await axios.get('/api/user');
+                const res = await axios.get('/user');
                 setUser(res.data);
             } catch (error) {
                 // 401エラー（未ログイン）などの場合はnullにする

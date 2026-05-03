@@ -32,8 +32,8 @@ export const AdminCalendar = () => {
     const fetchData = async () => {
       try {
         const [settingsRes, menusRes] = await Promise.all([
-          axios.get('http://localhost/api/admin/settings'),
-          axios.get('http://localhost/api/menus') // お客様用APIを流用
+          axios.get('/admin/settings'),
+          axios.get('/menus') // お客様用APIを流用
         ]);
         setStoreSettings(settingsRes.data);
         setMenus(menusRes.data.menus || menusRes.data || []);
@@ -47,7 +47,7 @@ export const AdminCalendar = () => {
   // 2. FullCalendarが自動で予約データを取得するための関数
   const fetchEvents = async (info: any, successCallback: any, failureCallback: any) => {
     try {
-      const res = await axios.get('http://localhost/api/admin/bookings', {
+      const res = await axios.get('/admin/bookings', {
         params: {
           start: info.startStr,
           end: info.endStr
@@ -93,10 +93,10 @@ export const AdminCalendar = () => {
 
     try {
       if (selectedBooking.isNew) {
-        await axios.post('http://localhost/api/admin/bookings', payload);
+        await axios.post('/admin/bookings', payload);
         alert('新規予約を登録しました！');
       } else {
-        await axios.put(`http://localhost/api/admin/bookings/${selectedBooking.id}`, payload);
+        await axios.put(`/admin/bookings/${selectedBooking.id}`, payload);
         alert('予約情報を更新しました！');
       }
       setSelectedBooking(null); // ドロワーを閉じる

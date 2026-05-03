@@ -17,7 +17,7 @@ export const SurveySettings = () => {
 
   const fetchQuestions = async () => {
     try {
-      const res = await axios.get('http://localhost/api/admin/survey-questions');
+      const res = await axios.get('/admin/survey-questions');
       const formattedData = res.data.map((q: any) => ({
         ...q,
         options: q.options || [] 
@@ -62,7 +62,7 @@ export const SurveySettings = () => {
 
   const handleSave = async () => {
     try {
-      await axios.post('http://localhost/api/admin/survey-questions', { questions });
+      await axios.post('/admin/survey-questions', { questions });
       alert('アンケート設定を保存しました');
       fetchQuestions(); // 保存後に最新のデータを再取得
     } catch (error) {

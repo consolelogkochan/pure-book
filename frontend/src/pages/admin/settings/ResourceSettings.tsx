@@ -40,7 +40,7 @@ export const ResourceSettings = () => {
   const fetchResources = async () => {
     try {
       // 稼働中のスタッフとシフト情報(リレーション)を取得
-      const res = await axios.get('http://localhost/api/admin/resources');
+      const res = await axios.get('/admin/resources');
       
       // 取得したデータの中に schedule が無い（新規スタッフ等）場合、
       // 全曜日 true(出勤) のデフォルトデータを持たせて画面にセットする
@@ -82,7 +82,7 @@ export const ResourceSettings = () => {
   // 3. 「変更を保存」ボタンを押した時の処理（一括保存APIを叩く）
   const handleBulkSave = async () => {
     try {
-      await axios.post('http://localhost/api/admin/resources/bulk', staffs, {
+      await axios.post('/admin/resources/bulk', staffs, {
         headers: { 'Accept': 'application/json' }
       });
       alert('シフトを一括保存しました！');

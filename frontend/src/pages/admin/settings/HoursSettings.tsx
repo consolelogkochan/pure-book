@@ -43,7 +43,7 @@ export const HoursSettings = () => {
   // 1. 初回マウント時に設定を取得
   const fetchSettings = async () => {
     try {
-      const res = await axios.get('http://localhost/api/admin/settings');
+      const res = await axios.get('/admin/settings');
       // DBから取得した時刻は "10:00:00" のように秒が含まれるため、先頭5文字("10:00")だけ切り取る
       setFormData({
         open_time: res.data.open_time.substring(0, 5),
@@ -82,7 +82,7 @@ export const HoursSettings = () => {
   // 3. 保存処理
   const handleSave = async () => {
     try {
-      await axios.put('http://localhost/api/admin/settings', formData, {
+      await axios.put('/admin/settings', formData, {
         headers: { 'Accept': 'application/json' },
       });
       alert('店舗設定を保存しました！');
