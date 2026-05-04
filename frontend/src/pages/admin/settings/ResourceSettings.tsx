@@ -1,25 +1,7 @@
 import { useState, useEffect } from 'react';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../../../axios';
-import { Button } from '../../../components/Button'; 
-
-// APIから返ってくるスタッフとスケジュールの型定義
-interface StaffSchedule {
-  monday: boolean;
-  tuesday: boolean;
-  wednesday: boolean;
-  thursday: boolean;
-  friday: boolean;
-  saturday: boolean;
-  sunday: boolean;
-}
-
-interface Staff {
-  id: number;
-  name: string;
-  role: string | null;
-  schedule: StaffSchedule | null; // scheduleがない場合(null)も考慮
-}
+import { Button } from '../../../components/Button';
+import type { Staff, StaffSchedule } from '../../../types';
 
 // 曜日表示用の定数
 const DAYS_OF_WEEK = [
@@ -44,7 +26,7 @@ export const ResourceSettings = () => {
       
       // 取得したデータの中に schedule が無い（新規スタッフ等）場合、
       // 全曜日 true(出勤) のデフォルトデータを持たせて画面にセットする
-      const formattedData = res.data.map((staff: any) => ({
+      const formattedData = res.data.map((staff: Staff) => ({
         ...staff,
         schedule: staff.schedule || {
           monday: true, tuesday: true, wednesday: true,

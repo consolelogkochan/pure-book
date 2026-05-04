@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../../../axios';
 import { Button } from '../../../components/Button';
-
-// APIとやり取りするデータの型定義
-interface HoursSetting {
-  open_time: string;
-  close_time: string;
-  regular_holidays: string[];
-  terms_text: string;
-  booking_deadline_type: 'time_based' | 'date_based';
-  booking_deadline_hours: number;
-  booking_deadline_days: number;
-  booking_deadline_time: string;
-}
+import type { StoreSetting } from '../../../types';
 
 // 曜日マスターデータ
 const DAYS_OF_WEEK = [
@@ -27,7 +15,7 @@ const DAYS_OF_WEEK = [
 ] as const;
 
 export const HoursSettings = () => {
-  const [formData, setFormData] = useState<HoursSetting>({
+  const [formData, setFormData] = useState<StoreSetting>({
     open_time: '10:00',
     close_time: '20:00',
     regular_holidays: [],

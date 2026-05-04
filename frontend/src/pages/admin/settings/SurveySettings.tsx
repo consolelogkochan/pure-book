@@ -1,30 +1,22 @@
 import { useState, useEffect } from 'react';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../../../axios';
 import { Button } from '../../../components/Button';
-
-interface Question {
-  id?: number;
-  question_text: string;
-  type: 'text' | 'radio' | 'checkbox';
-  options: string[];
-  is_required: boolean;
-}
+import type { SurveyQuestion } from '../../../types';
 
 export const SurveySettings = () => {
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setSurveyQuestions] = useState<SurveyQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchQuestions = async () => {
+  const fetchSurveyQuestions = async () => {
     try {
       const res = await axios.get('/admin/survey-questions');
-      const formattedData = res.data.map((q: any) => ({
+      const formattedData = res.data.map((q: SurveyQuestion) => ({
         ...q,
         options: q.options || [] 
       }));
       
       // 整形したデータをStateにセットする
-      setQuestions(formattedData);
+      setSurveyQuestions(formattedData);
     } catch (error) {
       console.error(error);
     } finally {
@@ -33,38 +25,38 @@ export const SurveySettings = () => {
   };
 
   useEffect(() => {
-    fetchQuestions();
+    fetchSurveyQuestions();
   }, []);
 
   // 質問の追加
-  const addQuestion = () => {
-    setQuestions([...questions, { question_text: '', type: 'text', options: [], is_required: false }]);
+  const addSurveyQuestion = () => {
+    setSurveyQuestions([...questions, { question_text: '', type: 'text', options: [], is_required: false }]);
   };
 
   // 質問の削除
-  const removeQuestion = (index: number) => {
-    setQuestions(questions.filter((_, i) => i !== index));
+  const removeSurveyQuestion = (index: number) => {
+    setSurveyQuestions(questions.filter((_, i) => i !== index));
   };
 
   // 質問内容の更新
-  const updateQuestion = (index: number, fields: Partial<Question>) => {
-    const newQuestions = [...questions];
-    newQuestions[index] = { ...newQuestions[index], ...fields };
-    setQuestions(newQuestions);
+  const updateSurveyQuestion = (index: number, fields: Partial<SurveyQuestion>) => {
+    const newSurveyQuestions = [...questions];
+    newSurveyQuestions[index] = { ...newSurveyQuestions[index], ...fields };
+    setSurveyQuestions(newSurveyQuestions);
   };
 
   // 選択肢の追加
   const addOption = (qIndex: number) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].options.push('');
-    setQuestions(newQuestions);
+    const newSurveyQuestions = [...questions];
+    newSurveyQuestions[qIndex].options.push('');
+    setSurveyQuestions(newSurveyQuestions);
   };
 
   const handleSave = async () => {
     try {
       await axios.post('/admin/survey-questions', { questions });
       alert('アンケート設定を保存しました');
-      fetchQuestions(); // 保存後に最新のデータを再取得
+      fetchSurveyQuestions(); // 保存後に最新のデータを再取得
     } catch (error) {
       alert('保存に失敗しました');
     }
@@ -82,7 +74,7 @@ export const SurveySettings = () => {
       <div className="space-y-4">
         {questions.map((q, qIndex) => (
           <div key={qIndex} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 relative">
-            <button onClick={() => removeQuestion(qIndex)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 text-sm">削除</button>
+            <button onClick={() => removeSurveyQuestion(qIndex)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 text-sm">削除</button>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -90,7 +82,7 @@ export const SurveySettings = () => {
                 <input 
                   type="text" 
                   value={q.question_text} 
-                  onChange={e => updateQuestion(qIndex, { question_text: e.target.value })}
+                  onChange={e => updateSurveyQuestion(qIndex, { question_text: e.target.value })}
                   className="w-full border rounded px-3 py-2"
                   placeholder="例: 当店を知ったきっかけは？"
                 />
@@ -99,7 +91,7 @@ export const SurveySettings = () => {
                 <label className="block text-sm font-bold text-slate-700 mb-1">回答形式</label>
                 <select 
                   value={q.type} 
-                  onChange={e => updateQuestion(qIndex, { type: e.target.value as any, options: e.target.value === 'text' ? [] : [''] })}
+                  onChange={e => updateSurveyQuestion(qIndex, { type: e.target.value as any, options: e.target.value === 'text' ? [] : [''] })}
                   className="w-full border rounded px-3 py-2 bg-white"
                 >
                   <option value="text">テキスト入力（自由記述）</option>
@@ -121,13 +113,13 @@ export const SurveySettings = () => {
                       onChange={e => {
                         const newOpts = [...q.options];
                         newOpts[oIndex] = e.target.value;
-                        updateQuestion(qIndex, { options: newOpts });
+                        updateSurveyQuestion(qIndex, { options: newOpts });
                       }}
                       className="flex-1 border rounded px-3 py-1 text-sm"
                     />
                     <button onClick={() => {
                       const newOpts = q.options.filter((_, i) => i !== oIndex);
-                      updateQuestion(qIndex, { options: newOpts });
+                      updateSurveyQuestion(qIndex, { options: newOpts });
                     }} className="text-red-400">×</button>
                   </div>
                 ))}
@@ -139,7 +131,7 @@ export const SurveySettings = () => {
               <input 
                 type="checkbox" 
                 checked={q.is_required} 
-                onChange={e => updateQuestion(qIndex, { is_required: e.target.checked })}
+                onChange={e => updateSurveyQuestion(qIndex, { is_required: e.target.checked })}
               />
               <span className="text-sm font-bold text-slate-600">この質問を必須にする</span>
             </label>
@@ -147,7 +139,7 @@ export const SurveySettings = () => {
         ))}
 
         <button 
-          onClick={addQuestion}
+          onClick={addSurveyQuestion}
           className="w-full py-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-bold hover:bg-slate-50 hover:border-slate-400 transition-all"
         >
           + 新しい質問を追加する

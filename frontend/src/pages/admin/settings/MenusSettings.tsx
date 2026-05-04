@@ -1,16 +1,7 @@
 import { useState, useEffect } from 'react';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../../../axios';
 import { Button } from '../../../components/Button';
-
-// APIから返ってくるメニューの型定義
-interface Menu {
-  id: number;
-  name: string;
-  price: number;
-  duration_minutes: number;
-  is_active: boolean;
-}
+import type { Menu } from '../../../types';
 
 export const MenusSettings = () => {
   const [menus, setMenus] = useState<Menu[]>([]);

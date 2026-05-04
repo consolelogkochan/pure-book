@@ -5,22 +5,18 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, DateSelectArg } from '@fullcalendar/core';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../axios';
-// 曜日の文字列をFullCalendar用の数値(0=日曜日)に変換するマップ
+import type { Booking, Menu, StoreSetting } from '../types';
+
 const dayMap: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
 };
 
-interface Menu {
-  id: number;
-  name: string;
-  duration_minutes: number;
-}
+type SelectedBooking = { isNew: boolean } & Partial<Booking>;
 
 export const AdminCalendar = () => {
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  const [storeSettings, setStoreSettings] = useState<any>(null);
+  const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
+  const [storeSettings, setStoreSettings] = useState<StoreSetting | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
 
   // ▼追加：カレンダー本体を操作するためのリモコン（Ref）
@@ -55,7 +51,7 @@ export const AdminCalendar = () => {
       });
 
       // Laravelから来たデータをFullCalendarのイベント形式に変換
-      const events = res.data.map((booking: any) => ({
+      const events = res.data.map((booking: Booking) => ({
         id: booking.id,
         title: `${booking.customer_name}様`,
         start: booking.start_time,
@@ -74,9 +70,9 @@ export const AdminCalendar = () => {
 
   // ▼追加：予約の更新（編集・キャンセル）処理
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // 画面の無駄なリロードを防ぐ
-    
-    // フォームに入力されたデータを集める
+    e.preventDefault();
+    if (!selectedBooking) return;
+
     const formData = new FormData(e.currentTarget);
     const datePart = formData.get('start_date_only');
     const timePart = formData.get('start_time_only');
@@ -152,10 +148,9 @@ export const AdminCalendar = () => {
                 });
               }}
               eventClick={(info: EventClickArg) => {
-                // イベントをクリックしたら、保持していた元データ(extendedProps)をStateに入れる
                 setSelectedBooking({
                   isNew: false,
-                  ...info.event.extendedProps
+                  ...(info.event.extendedProps as Booking)
                 });
               }}
               height="100%"

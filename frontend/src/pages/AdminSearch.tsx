@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdminLayout } from '../layouts/AdminLayout';
 import { Button } from '../components/Button';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../axios';
+import type { Booking, BookingStatus, Menu } from '../types';
 
 interface SearchFormInputs {
   date: string;
@@ -17,8 +17,8 @@ export const AdminSearch = () => {
   const { register, handleSubmit, getValues } = useForm<SearchFormInputs>();
   
   // State管理
-  const [results, setResults] = useState<any[]>([]);
-  const [menus, setMenus] = useState<any[]>([]);
+  const [results, setResults] = useState<Booking[]>([]);
+  const [menus, setMenus] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState<{current_page: number, last_page: number, total: number} | null>(null);
 
@@ -39,7 +39,7 @@ export const AdminSearch = () => {
   }, []);
 
   // 検索APIを叩いて結果をStateに入れる関数
-  const fetchSearchResults = async (params: any, page: number = 1) => {
+  const fetchSearchResults = async (params: Partial<SearchFormInputs>, page: number = 1) => {
     setIsLoading(true);
     try {
       const res = await axios.get('/admin/bookings/search', { 
@@ -96,7 +96,7 @@ export const AdminSearch = () => {
   };
 
   // 一覧画面から直接ステータスを変更する機能
-  const handleStatusChange = async (id: number, newStatus: string) => {
+  const handleStatusChange = async (id: number, newStatus: BookingStatus) => {
     try {
       await axios.patch(`/admin/bookings/${id}/status`, { status: newStatus });
       alert('ステータスを更新しました');
@@ -116,7 +116,7 @@ export const AdminSearch = () => {
   };
 
   // アンケートデータを画面表示用の文字列に変換する関数
-  const formatSurveyResponse = (responses: any) => {
+  const formatSurveyResponse = (responses: Record<string, unknown> | null) => {
     if (!responses || typeof responses !== 'object') return 'なし';
     
     return Object.entries(responses).map(([question, answer]) => {
@@ -226,7 +226,7 @@ export const AdminSearch = () => {
                       <td className="p-4">
                         <select 
                           value={result.status}
-                          onChange={(e) => handleStatusChange(result.id, e.target.value)}
+                          onChange={(e) => handleStatusChange(result.id, e.target.value as BookingStatus)}
                           className={`text-sm font-bold border rounded px-2 py-1 outline-none ${
                             result.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-300' : 'bg-blue-50 text-blue-700 border-blue-200'
                           }`}

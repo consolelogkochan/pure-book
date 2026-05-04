@@ -1,24 +1,9 @@
 import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../axios';
-import { useForm } from 'react-hook-form'; // 👈 追加
+import { useForm } from 'react-hook-form';
 import 'react-calendar/dist/Calendar.css';
-
-interface Menu {
-  id: number;
-  name: string;
-  price: number;
-  duration_minutes: number;
-}
-
-interface SurveyQuestion {
-  id: number;
-  question_text: string;
-  type: 'text' | 'radio' | 'checkbox';
-  options: string[];
-  is_required: boolean;
-}
+import type { Menu, SurveyQuestion } from '../types';
 
 // フォームで入力してもらうデータの型定義
 interface BookingFormData {
@@ -56,7 +41,7 @@ export const BookingWizard = () => {
         
         setMenus(menusRes.data.menus || menusRes.data || []);
         
-        const formattedSurvey = surveyRes.data.map((q: any) => ({
+        const formattedSurvey = surveyRes.data.map((q: SurveyQuestion) => ({
           ...q,
           options: q.options || []
         }));
@@ -71,7 +56,7 @@ export const BookingWizard = () => {
     fetchData();
   }, []);
 
-  const handleDateChange = async (value: any) => {
+  const handleDateChange = async (value: Date | [Date | null, Date | null] | null) => {
     const date = value as Date;
     setSelectedDate(date);
     setSelectedTime(null); // 日付を変えたら選んだ時間はリセットする

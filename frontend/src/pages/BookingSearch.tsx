@@ -1,26 +1,23 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../axios';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import type { BookingStatus, PaymentStatus } from '../types';
 
-// Stripeの初期化（Viteの環境変数から公開キーを読み込む）
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
 
-// 検索フォームの型
 interface SearchFormData {
   booking_reference: string;
   email: string;
 }
 
-// 予約データの型（バックエンドから受け取る想定）
 interface Booking {
   booking_reference: string;
   customer_name: string;
   start_time: string;
-  status: string;
-  payment_status: string; 
+  status: BookingStatus;
+  payment_status: PaymentStatus;
   menu: { name: string; price: number };
 }
 

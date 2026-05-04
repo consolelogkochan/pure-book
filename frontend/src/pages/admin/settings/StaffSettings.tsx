@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
-// 設定済みの専用Axiosを呼ぶ
 import axios from '../../../axios';
-import { Button } from '../../../components/Button'; 
-
-interface Staff {
-  id: number;
-  name: string;
-  role: string | null;
-  is_active: boolean;
-}
+import { Button } from '../../../components/Button';
+import type { Staff } from '../../../types';
 
 export const StaffSettings = () => {
   const [staffs, setStaffs] = useState<Staff[]>([]);
