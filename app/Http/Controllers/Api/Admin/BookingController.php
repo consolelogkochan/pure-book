@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Exports\BookingCsvExporter;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Menu;
@@ -180,13 +181,12 @@ class BookingController extends Controller
     }
 
     // CSVダウンロードAPI
-    public function exportCsv(Request $request): StreamedResponse
+    public function exportCsv(Request $request, BookingCsvExporter $exporter): StreamedResponse
     {
-        // 検索と同じスコープを使って対象データを取得
         $bookings = Booking::with(['menu', 'staff'])
             ->searchFilter($request->all())
             ->orderBy('start_time', 'desc')
-            ->cursor(); // 🌟 1件ずつ省メモリで取り出す
+            ->cursor();
 
         $headers = [
             'Content-type' => 'text/csv',
@@ -196,68 +196,19 @@ class BookingController extends Controller
             'Expires' => '0',
         ];
 
-        $callback = function () use ($bookings) {
+        $callback = function () use ($bookings, $exporter) {
             $file = fopen('php://output', 'w');
-            // Excelで文字化けしないようにBOM（特殊な目印）をつける
+            if ($file === false) {
+                return;
+            }
             fwrite($file, "\xEF\xBB\xBF");
-
-            // CSVの1行目（ヘッダー）
-            fputcsv($file, ['予約番号', '予約日時', 'お名前', '電話番号', 'メール', 'メニュー', 'ステータス', '決済ステータス', '店舗メモ', 'アンケート回答']);
-
-            // データ行
+            fputcsv($file, $exporter->headers());
             foreach ($bookings as $booking) {
-                // アンケート内容を結合
-                $surveyText = '';
-                // PHPStan対策1: survey_responsesの型を明示的に判定・変換
-                $responses = $booking->survey_responses;
-
-                // PHPStanには文字列に見えているので、文字列なら配列に変換する処理を挟む
-                if (is_string($responses)) {
-                    $responses = json_decode($responses, true);
-                }
-
-                if (is_array($responses)) {
-                    $surveys = [];
-                    foreach ($responses as $question => $answer) {
-                        // 回答が配列（複数選択など）だった場合は、カンマ区切りで文字にする
-                        $answerText = is_array($answer) ? implode(', ', $answer) : (string) $answer;
-                        $surveys[] = "{$question}: {$answerText}";
-                    }
-                    $surveyText = implode(' / ', $surveys);
-                }
-
-                // PHPStan対策2: start_timeを確実にCarbonインスタンスにしてからformatを呼ぶ
-                $startTime = \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d H:i');
-
-                // PHPStan対策3: $booking->menu が Menuモデルであることを注釈（PHPDoc）で教える
-                /** @var Menu|null $menu */
-                $menu = $booking->menu;
-                $menuName = $menu ? $menu->name : '';
-
-                // 決済ステータスを日本語に翻訳
-                $paymentStatusText = match ($booking->payment_status) {
-                    'paid' => '事前決済済',
-                    'refunded' => '返金済',
-                    default => '未決済',
-                };
-
-                fputcsv($file, [
-                    $booking->booking_reference,
-                    $startTime,
-                    $booking->customer_name,
-                    $booking->customer_phone,
-                    $booking->customer_email,
-                    $menuName,
-                    $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
-                    $paymentStatusText,
-                    (string) $booking->customer_memo, // nullの可能性があるので明示的にstringへキャスト
-                    $surveyText,
-                ]);
+                fputcsv($file, $exporter->buildRow($booking));
             }
             fclose($file);
         };
 
-        // 大量データでもメモリを圧迫しない stream ダウンロード方式
         return response()->stream($callback, 200, $headers);
     }
 
