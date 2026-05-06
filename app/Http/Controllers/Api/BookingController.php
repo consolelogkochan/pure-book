@@ -33,6 +33,8 @@ class BookingController extends Controller
                 $endTime = $bookingService->calculateEndTime($startTime, $menu->duration_minutes);
                 $dayOfWeek = $bookingService->extractDayOfWeek($startTime);
 
+                $bookingService->checkRegularHoliday($dayOfWeek);
+
                 $availableStaffs = $bookingService->getAvailableStaffs($dayOfWeek, $requestedStaffId);
 
                 if ($availableStaffs->isEmpty()) {
