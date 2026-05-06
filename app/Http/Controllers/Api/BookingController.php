@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Contracts\StripeServiceInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreBookingRequest;
 use App\Mail\BookingCancelled;
@@ -10,7 +11,6 @@ use App\Mail\PaymentCompleted;
 use App\Models\Booking;
 use App\Models\Menu;
 use App\Services\BookingService;
-use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -138,7 +138,7 @@ class BookingController extends Controller
     /**
      * 決済の準備（PaymentIntentの作成）
      */
-    public function createPaymentIntent(string $reference, StripeService $stripeService): JsonResponse
+    public function createPaymentIntent(string $reference, StripeServiceInterface $stripeService): JsonResponse
     {
         $booking = Booking::with('menu')->where('booking_reference', $reference)->firstOrFail();
 
@@ -165,7 +165,7 @@ class BookingController extends Controller
     /**
      * 決済の検証とDB更新
      */
-    public function verifyPayment(Request $request, string $reference, StripeService $stripeService): JsonResponse
+    public function verifyPayment(Request $request, string $reference, StripeServiceInterface $stripeService): JsonResponse
     {
         $validated = $request->validate([
             'payment_intent_id' => 'required|string',
@@ -190,7 +190,7 @@ class BookingController extends Controller
     }
 
     // 予約キャンセルメソッド
-    public function cancel(Request $request, string $reference, StripeService $stripeService): JsonResponse
+    public function cancel(Request $request, string $reference, StripeServiceInterface $stripeService): JsonResponse
     {
         // セキュリティ対策：誰でもキャンセルできないよう、メールアドレスも一緒に送ってもらいます
         $validated = $request->validate([

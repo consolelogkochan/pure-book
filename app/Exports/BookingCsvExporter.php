@@ -24,15 +24,13 @@ class BookingCsvExporter
      */
     public function buildRow(Booking $booking): array
     {
-        $startTime = Carbon::parse($booking->start_time)->format('Y-m-d H:i');
-
         /** @var Menu|null $menu */
         $menu = $booking->menu;
         $menuName = $menu ? $menu->name : '';
 
         return [
             (string) $booking->booking_reference,
-            $startTime,
+            $this->formatStartTime((string) $booking->start_time),
             (string) $booking->customer_name,
             (string) $booking->customer_phone,
             (string) $booking->customer_email,
@@ -42,5 +40,10 @@ class BookingCsvExporter
             (string) $booking->customer_memo,
             $this->bookingService->formatSurveyResponsesAsText($booking->survey_responses),
         ];
+    }
+
+    protected function formatStartTime(string $startTime): string
+    {
+        return Carbon::parse($startTime)->format('Y-m-d H:i');
     }
 }

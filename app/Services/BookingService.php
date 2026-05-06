@@ -7,16 +7,27 @@ use App\Models\Setting;
 use App\Models\Staff;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class BookingService
 {
     /**
      * 指定曜日に出勤している有効なスタッフを悲観的ロック付きで取得する
      *
+     * 【重要】このメソッドは必ず DB::transaction() 内から呼び出すこと。
+     * lockForUpdate() はトランザクション外では悲観的ロックとして機能しない。
+     *
      * @return Collection<int, Staff>
+     *
+     * @throws \LogicException トランザクション外から呼び出された場合
      */
     public function getAvailableStaffs(string $dayOfWeek, ?int $requestedStaffId = null): Collection
     {
+        if (DB::transactionLevel() === 0) {
+            throw new \LogicException('getAvailableStaffs() must be called within a DB transaction.');
+        }
+
         $query = Staff::where('is_active', true)
             ->whereHas('schedule', function ($q) use ($dayOfWeek) {
                 $q->where($dayOfWeek, true);
@@ -56,12 +67,19 @@ class BookingService
     /**
      * 指定曜日が店舗の定休日であれば例外をスロー
      *
+     * 定休日設定は頻繁に変わらないため60秒キャッシュして DB クエリを削減する。
+     * 設定変更時は 'store_settings.regular_holidays' キーを削除すること。
+     *
      * @throws \Exception
      */
     public function checkRegularHoliday(string $dayOfWeek): void
     {
-        $settings = Setting::first();
-        $regularHolidays = $settings ? ($settings->regular_holidays ?? []) : [];
+        /** @var array<int, string> $regularHolidays */
+        $regularHolidays = Cache::remember('store_settings.regular_holidays', 60, function () {
+            $settings = Setting::first();
+
+            return $settings ? ($settings->regular_holidays ?? []) : [];
+        });
 
         if (in_array($dayOfWeek, $regularHolidays, true)) {
             throw new \Exception('指定された日付は店舗の定休日です。', 409);

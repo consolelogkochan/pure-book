@@ -19,7 +19,7 @@ export default function AdminLogin() {
 
         try {
             // 1. まずはCSRFトークンを取得（/api 配下でないため絶対URLで指定）
-            await axios.get(import.meta.env.VITE_APP_URL + '/sanctum/csrf-cookie');
+            await axios.get((import.meta.env.VITE_APP_URL ?? 'http://localhost') + '/sanctum/csrf-cookie');
 
             // 2. ログインを実行（本番）
             const response = await axios.post('/admin/login', {

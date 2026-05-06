@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class SettingController extends Controller
 {
@@ -51,6 +52,8 @@ class SettingController extends Controller
         // 常に id=1 のデータを更新する
         $setting = Setting::firstOrFail(); // 万が一無い場合は404エラーにする
         $setting->update($validated);
+
+        Cache::forget('store_settings.regular_holidays');
 
         return response()->json($setting);
     }

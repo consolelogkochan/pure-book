@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Contracts\StripeServiceInterface;
 use App\Exports\BookingCsvExporter;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Menu;
 use App\Services\BookingService;
-use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -94,7 +94,7 @@ class BookingController extends Controller
         }
     }
 
-    public function update(Request $request, string $id, StripeService $stripeService, BookingService $bookingService): JsonResponse
+    public function update(Request $request, string $id, StripeServiceInterface $stripeService, BookingService $bookingService): JsonResponse
     {
         $booking = Booking::findOrFail($id);
 
@@ -183,10 +183,12 @@ class BookingController extends Controller
     // CSVダウンロードAPI
     public function exportCsv(Request $request, BookingCsvExporter $exporter): StreamedResponse
     {
+        // lazy() は内部で 500件ずつ取得し、with() のEager Loadingもチャンク単位で実行する。
+        // cursor() + with() は関連モデルを全件一括メモリに保持するため、大量データに不向き。
         $bookings = Booking::with(['menu', 'staff'])
             ->searchFilter($request->all())
             ->orderBy('start_time', 'desc')
-            ->cursor();
+            ->lazy(500);
 
         $headers = [
             'Content-type' => 'text/csv',
@@ -212,7 +214,7 @@ class BookingController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function updateStatus(Request $request, string $id, StripeService $stripeService): JsonResponse
+    public function updateStatus(Request $request, string $id, StripeServiceInterface $stripeService): JsonResponse
     {
         $validated = $request->validate([
             'status' => 'required|in:pending,confirmed,cancelled',

@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use App\Contracts\StripeServiceInterface;
 use Stripe\PaymentIntent;
 use Stripe\StripeClient;
 
-class StripeService
+class StripeService implements StripeServiceInterface
 {
     protected StripeClient $stripe;
 
@@ -46,7 +47,7 @@ class StripeService
                 'payment_intent' => $paymentIntentId,
             ]);
         } catch (\Exception $e) {
-            throw new \Exception('Stripeでの返金処理に失敗しました: '.$e->getMessage());
+            throw new \Exception('Stripeでの返金処理に失敗しました: '.$e->getMessage(), 0, $e);
         }
     }
 }
