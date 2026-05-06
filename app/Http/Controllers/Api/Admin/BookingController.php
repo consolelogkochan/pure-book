@@ -12,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
@@ -50,8 +49,8 @@ class BookingController extends Controller
             return DB::transaction(function () use ($validated, $bookingService) {
                 $newStartTime = Carbon::parse($validated['start_time']);
                 $menu = Menu::findOrFail($validated['menu_id']);
-                $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
-                $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
+                $newEndTime = $bookingService->calculateEndTime($newStartTime, $menu->duration_minutes);
+                $dayOfWeek = $bookingService->extractDayOfWeek($newStartTime);
 
                 $bookingService->checkRegularHoliday($dayOfWeek);
 
@@ -67,10 +66,8 @@ class BookingController extends Controller
                     throw new \Exception('この時間は予約枠が埋まっています。', 409);
                 }
 
-                $bookingReference = 'BKG-'.strtoupper(Str::random(8));
-
-                $booking = Booking::create([
-                    'booking_reference' => $bookingReference,
+                $booking = $bookingService->createBooking([
+                    'booking_reference' => $bookingService->generateBookingReference(),
                     'user_id' => null,
                     'staff_id' => $availableStaffs->first()->id,
                     'menu_id' => $validated['menu_id'],
@@ -114,13 +111,12 @@ class BookingController extends Controller
         try {
             return DB::transaction(function () use ($validated, $id, $booking, $stripeService, $bookingService) {
                 $newStartTime = Carbon::parse($validated['start_time']);
-                // 選択されたメニューの所要時間を取得して、終了時刻を計算
                 $menu = Menu::findOrFail($validated['menu_id']);
-                $newEndTime = $newStartTime->copy()->addMinutes($menu->duration_minutes);
+                $newEndTime = $bookingService->calculateEndTime($newStartTime, $menu->duration_minutes);
 
                 // ステータスがキャンセルの場合は枠を空けるのでチェック不要
                 if ($validated['status'] !== 'cancelled') {
-                    $dayOfWeek = strtolower($newStartTime->englishDayOfWeek);
+                    $dayOfWeek = $bookingService->extractDayOfWeek($newStartTime);
 
                     $bookingService->checkRegularHoliday($dayOfWeek);
 

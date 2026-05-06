@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class BookingService
 {
@@ -83,6 +84,98 @@ class BookingService
 
         if (in_array($dayOfWeek, $regularHolidays, true)) {
             throw new \Exception('指定された日付は店舗の定休日です。', 409);
+        }
+    }
+
+    /**
+     * 開始時刻とメニュー所要時間から終了時刻を計算する
+     */
+    public function calculateEndTime(Carbon $startTime, int $durationMinutes): Carbon
+    {
+        return $startTime->copy()->addMinutes($durationMinutes);
+    }
+
+    /**
+     * Carbon インスタンスから小文字の曜日名（例: 'monday'）を返す
+     */
+    public function extractDayOfWeek(Carbon $startTime): string
+    {
+        return strtolower($startTime->englishDayOfWeek);
+    }
+
+    /**
+     * 指定スタッフ群の中で時間帯が重複するキャンセル以外の予約を返す
+     *
+     * @param  Collection<int, Staff>  $availableStaffs
+     * @return Collection<int, Booking>
+     */
+    public function findOverlappingBookingsByStaffs(
+        Collection $availableStaffs,
+        Carbon $startTime,
+        Carbon $endTime
+    ): Collection {
+        $staffIds = $availableStaffs->pluck('id');
+
+        return Booking::whereIn('staff_id', $staffIds)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($startTime, $endTime) {
+                $q->where('start_time', '<', $endTime)
+                    ->where('end_time', '>', $startTime);
+            })
+            ->get();
+    }
+
+    /**
+     * 重複予約がない最初のスタッフを割り当てて返す
+     *
+     * @param  Collection<int, Staff>  $availableStaffs
+     * @param  Collection<int, Booking>  $overlappingBookings
+     *
+     * @throws \Exception 空きスタッフが存在しない場合
+     */
+    public function assignStaff(Collection $availableStaffs, Collection $overlappingBookings): Staff
+    {
+        foreach ($availableStaffs as $staff) {
+            if ($overlappingBookings->where('staff_id', $staff->id)->isEmpty()) {
+                return $staff;
+            }
+        }
+
+        throw new \Exception('申し訳ありません。タッチの差で予約が埋まってしまいました。');
+    }
+
+    /**
+     * "BKG-" プレフィックス付きのランダムな予約番号を生成する
+     */
+    public function generateBookingReference(): string
+    {
+        return 'BKG-'.strtoupper(Str::random(8));
+    }
+
+    /**
+     * 予約レコードを作成して返す
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function createBooking(array $data): Booking
+    {
+        return Booking::create($data);
+    }
+
+    /**
+     * キャンセル期限（予約24時間前）を過ぎている場合は例外をスロー
+     *
+     * @throws \Exception
+     */
+    public function checkCancelDeadline(Booking $booking): void
+    {
+        $cancelDeadline = Carbon::parse((string) $booking->start_time)->subHours(24);
+
+        if (Carbon::now()->gt($cancelDeadline)) {
+            throw new \Exception(
+                'キャンセル期限（予約の24時間前）を過ぎているため、システムからのキャンセルはできません。店舗へ直接お電話ください。',
+                403
+            );
         }
     }
 
