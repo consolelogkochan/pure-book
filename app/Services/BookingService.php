@@ -151,17 +151,27 @@ class BookingService
     }
 
     /**
-     * キャンセル期限（予約24時間前）を過ぎている場合は例外をスロー
+     * キャンセル期限を過ぎている場合は例外をスロー
+     *
+     * キャンセル期限時間数は Settings テーブルから取得し60秒キャッシュする。
+     * 設定変更時は 'store_settings.cancel_deadline_hours' キーを削除すること。
      *
      * @throws \Exception
      */
     public function checkCancelDeadline(Booking $booking): void
     {
-        $cancelDeadline = Carbon::parse((string) $booking->start_time)->subHours(24);
+        /** @var int $hours */
+        $hours = Cache::remember('store_settings.cancel_deadline_hours', 60, function () {
+            $settings = Setting::first();
+
+            return $settings ? ($settings->cancel_deadline_hours ?? 24) : 24;
+        });
+
+        $cancelDeadline = Carbon::parse((string) $booking->start_time)->subHours($hours);
 
         if (Carbon::now()->gt($cancelDeadline)) {
             throw new \Exception(
-                'キャンセル期限（予約の24時間前）を過ぎているため、システムからのキャンセルはできません。店舗へ直接お電話ください。',
+                "キャンセル期限（予約の{$hours}時間前）を過ぎているため、システムからのキャンセルはできません。店舗へ直接お電話ください。",
                 403
             );
         }

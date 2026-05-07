@@ -89,4 +89,5 @@ export interface StoreSetting {
   booking_deadline_hours: number;
   booking_deadline_days: number;
   booking_deadline_time: string;
+  cancel_deadline_hours: number;
 }

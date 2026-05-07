@@ -19,6 +19,7 @@ class Setting extends Model
         'booking_deadline_hours',
         'booking_deadline_days',
         'booking_deadline_time',
+        'cancel_deadline_hours',
     ];
 
     protected function casts(): array

@@ -13,6 +13,7 @@ export const PeriodSettings = () => {
     booking_deadline_hours: 2,
     booking_deadline_days: 1,
     booking_deadline_time: '17:00',
+    cancel_deadline_hours: 24,
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +32,7 @@ export const PeriodSettings = () => {
         booking_deadline_days: res.data.booking_deadline_days ?? 1,
         // DBから来る時刻は秒が含まれるためカット（nullの場合はデフォルト値）
         booking_deadline_time: res.data.booking_deadline_time ? res.data.booking_deadline_time.substring(0, 5) : '17:00',
+        cancel_deadline_hours: res.data.cancel_deadline_hours ?? 24,
       });
     } catch (error) {
       console.error('設定の取得に失敗しました', error);
@@ -161,6 +163,28 @@ export const PeriodSettings = () => {
         </label>
 
       </div>
+
+      {/* キャンセル受付ルール */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+        <div className="border-b pb-3">
+          <h3 className="font-bold text-slate-800 text-base">キャンセル受付ルールの設定</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            顧客がシステムからキャンセルできる期限を設定します。期限を過ぎた場合は店舗への電話が必要になります。
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-slate-700">来店時間の</span>
+          <input
+            type="number"
+            min="0"
+            value={formData.cancel_deadline_hours}
+            onChange={e => setFormData({ ...formData, cancel_deadline_hours: Number(e.target.value) })}
+            className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-center focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <span className="font-medium text-slate-700">時間前まで受付</span>
+        </div>
+      </div>
+
     </div>
   );
 };

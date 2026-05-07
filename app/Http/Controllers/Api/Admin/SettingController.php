@@ -28,6 +28,7 @@ class SettingController extends Controller
                 'booking_deadline_hours' => 2,
                 'booking_deadline_days' => 1,
                 'booking_deadline_time' => '17:00:00',
+                'cancel_deadline_hours' => 24,
             ]
         );
 
@@ -47,6 +48,7 @@ class SettingController extends Controller
             'booking_deadline_hours' => 'nullable|integer|min:0',
             'booking_deadline_days' => 'nullable|integer|min:0',
             'booking_deadline_time' => 'nullable|date_format:H:i',
+            'cancel_deadline_hours' => 'required|integer|min:0',
         ]);
 
         // 常に id=1 のデータを更新する
@@ -54,6 +56,7 @@ class SettingController extends Controller
         $setting->update($validated);
 
         Cache::forget('store_settings.regular_holidays');
+        Cache::forget('store_settings.cancel_deadline_hours');
 
         return response()->json($setting);
     }

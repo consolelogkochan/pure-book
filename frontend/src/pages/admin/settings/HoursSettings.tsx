@@ -24,6 +24,7 @@ export const HoursSettings = () => {
     booking_deadline_hours: 2,
     booking_deadline_days: 1,
     booking_deadline_time: '17:00',
+    cancel_deadline_hours: 24,
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +43,7 @@ export const HoursSettings = () => {
         booking_deadline_hours: res.data.booking_deadline_hours ?? 2,
         booking_deadline_days: res.data.booking_deadline_days ?? 1,
         booking_deadline_time: res.data.booking_deadline_time ? res.data.booking_deadline_time.substring(0, 5) : '17:00',
+        cancel_deadline_hours: res.data.cancel_deadline_hours ?? 24,
       });
     } catch (error) {
       console.error('設定の取得に失敗しました', error);
