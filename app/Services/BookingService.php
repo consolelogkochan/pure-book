@@ -43,29 +43,6 @@ class BookingService
     }
 
     /**
-     * 指定時間帯と重複するキャンセル以外の予約件数を返す
-     *
-     * @param  int|null  $excludeBookingId  自身を除外する場合のID（update時に使用）
-     */
-    public function countOverlappingBookings(
-        Carbon $startTime,
-        Carbon $endTime,
-        ?int $excludeBookingId = null
-    ): int {
-        $query = Booking::where('status', '!=', 'cancelled')
-            ->where(function ($q) use ($startTime, $endTime) {
-                $q->where('start_time', '<', $endTime)
-                    ->where('end_time', '>', $startTime);
-            });
-
-        if ($excludeBookingId !== null) {
-            $query->where('id', '!=', $excludeBookingId);
-        }
-
-        return $query->count();
-    }
-
-    /**
      * 指定曜日が店舗の定休日であれば例外をスロー
      *
      * 定休日設定は頻繁に変わらないため60秒キャッシュして DB クエリを削減する。
