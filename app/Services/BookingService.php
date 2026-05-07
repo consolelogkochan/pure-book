@@ -43,14 +43,12 @@ class BookingService
     }
 
     /**
-     * 指定曜日が店舗の定休日であれば例外をスロー
+     * 指定曜日が店舗の定休日かどうかを返す
      *
-     * 定休日設定は頻繁に変わらないため60秒キャッシュして DB クエリを削減する。
+     * 定休日設定は60秒キャッシュして DB クエリを削減する。
      * 設定変更時は 'store_settings.regular_holidays' キーを削除すること。
-     *
-     * @throws \Exception
      */
-    public function checkRegularHoliday(string $dayOfWeek): void
+    public function isRegularHoliday(string $dayOfWeek): bool
     {
         /** @var array<int, string> $regularHolidays */
         $regularHolidays = Cache::remember('store_settings.regular_holidays', 60, function () {
@@ -59,9 +57,121 @@ class BookingService
             return $settings ? ($settings->regular_holidays ?? []) : [];
         });
 
-        if (in_array($dayOfWeek, $regularHolidays, true)) {
+        return in_array($dayOfWeek, $regularHolidays, true);
+    }
+
+    /**
+     * 指定曜日が店舗の定休日であれば例外をスロー
+     *
+     * @throws \Exception
+     */
+    public function checkRegularHoliday(string $dayOfWeek): void
+    {
+        if ($this->isRegularHoliday($dayOfWeek)) {
             throw new \Exception('指定された日付は店舗の定休日です。', 409);
         }
+    }
+
+    /**
+     * 指定曜日に出勤している有効なスタッフ数を返す
+     *
+     * getAvailableStaffs() と異なりトランザクション不要・ロックなし。
+     */
+    public function getAvailableStaffCount(string $dayOfWeek): int
+    {
+        return Staff::where('is_active', true)
+            ->whereHas('schedule', function ($q) use ($dayOfWeek) {
+                $q->where($dayOfWeek, true);
+            })
+            ->count();
+    }
+
+    /**
+     * 指定日のキャンセル以外の予約一覧を返す
+     *
+     * @return Collection<int, Booking>
+     */
+    public function getBookingsOnDate(Carbon $date): Collection
+    {
+        return Booking::whereDate('start_time', $date->format('Y-m-d'))
+            ->where('status', '!=', 'cancelled')
+            ->get();
+    }
+
+    /**
+     * 日付ベース設定での予約受付締切を過ぎているか判定する
+     *
+     * 締切 = targetDate の booking_deadline_days 日前の booking_deadline_time
+     */
+    public function isBookingDeadlinePassed(Carbon $targetDate, Setting $settings): bool
+    {
+        $deadlineDays = $settings->booking_deadline_days ?? 1;
+        $deadlineTime = $settings->booking_deadline_time ?? '17:00:00';
+
+        $bookingDeadline = $targetDate->copy()
+            ->subDays((int) $deadlineDays)
+            ->setTimeFromTimeString((string) $deadlineTime);
+
+        return Carbon::now()->gt($bookingDeadline);
+    }
+
+    /**
+     * 時間ベース設定での指定スロットがまだ予約受付可能か判定する
+     *
+     * スロット開始時刻の booking_deadline_hours 時間前を期限とする。
+     */
+    public function isSlotWithinDeadline(Carbon $slotTime, Setting $settings): bool
+    {
+        $deadlineHours = $settings->booking_deadline_hours ?? 2;
+        $slotDeadline = $slotTime->copy()->subHours((int) $deadlineHours);
+
+        return Carbon::now()->lte($slotDeadline);
+    }
+
+    /**
+     * 30分刻みで空きスロットの開始時刻一覧を計算して返す
+     *
+     * @param  Collection<int, Booking>  $bookings
+     * @return array<int, string>
+     */
+    public function calculateAvailableSlots(
+        Carbon $targetDate,
+        int $durationMinutes,
+        Setting $settings,
+        int $staffCount,
+        Collection $bookings
+    ): array {
+        $openTime = $targetDate->copy()->setTimeFromTimeString((string) $settings->open_time);
+        $closeTime = $targetDate->copy()->setTimeFromTimeString((string) $settings->close_time);
+        $isTimeBased = $settings->booking_deadline_type === 'time_based';
+
+        $availableSlots = [];
+        $currentTime = $openTime->copy();
+
+        while ($currentTime < $closeTime) {
+            $endTime = $currentTime->copy()->addMinutes($durationMinutes);
+
+            if ($endTime <= $closeTime) {
+                $isValidSlot = $isTimeBased
+                    ? $this->isSlotWithinDeadline($currentTime, $settings)
+                    : true;
+
+                if ($isValidSlot) {
+                    $overlappingCount = $bookings->filter(function ($booking) use ($currentTime, $endTime) {
+                        return Carbon::parse((string) $booking->start_time)->lt($endTime)
+                            && Carbon::parse((string) $booking->end_time)->gt($currentTime);
+                    })->count();
+
+                    if ($overlappingCount < $staffCount) {
+                        $availableSlots[] = $currentTime->format('H:i');
+                    }
+                }
+            }
+
+            $currentTime->addMinutes(30);
+        }
+
+        return $availableSlots;
     }
 
     /**
