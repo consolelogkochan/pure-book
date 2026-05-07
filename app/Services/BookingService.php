@@ -123,10 +123,21 @@ class BookingService
 
     /**
      * "BKG-" プレフィックス付きのランダムな予約番号を生成する
+     *
+     * DB に存在しない番号が生成されるまで最大5回リトライする。
+     *
+     * @throws \RuntimeException 5回試みても衝突が解消しない場合
      */
     public function generateBookingReference(): string
     {
-        return 'BKG-'.strtoupper(Str::random(8));
+        for ($i = 0; $i < 5; $i++) {
+            $reference = 'BKG-'.strtoupper(Str::random(8));
+            if (! Booking::where('booking_reference', $reference)->exists()) {
+                return $reference;
+            }
+        }
+
+        throw new \RuntimeException('予約番号の生成に失敗しました。しばらく時間をおいて再度お試しください。');
     }
 
     /**
