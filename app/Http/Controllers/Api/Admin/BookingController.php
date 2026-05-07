@@ -60,16 +60,13 @@ class BookingController extends Controller
                     throw new \Exception('指定された曜日に出勤するスタッフがいません。', 409);
                 }
 
-                $overlappingCount = $bookingService->countOverlappingBookings($newStartTime, $newEndTime);
-
-                if ($overlappingCount >= $availableStaffs->count()) {
-                    throw new \Exception('この時間は予約枠が埋まっています。', 409);
-                }
+                $overlappingBookings = $bookingService->findOverlappingBookingsByStaffs($availableStaffs, $newStartTime, $newEndTime);
+                $assignedStaff = $bookingService->assignStaff($availableStaffs, $overlappingBookings);
 
                 $booking = $bookingService->createBooking([
                     'booking_reference' => $bookingService->generateBookingReference(),
                     'user_id' => null,
-                    'staff_id' => $availableStaffs->first()->id,
+                    'staff_id' => $assignedStaff->id,
                     'menu_id' => $validated['menu_id'],
                     'start_time' => $newStartTime,
                     'end_time' => $newEndTime,
@@ -115,18 +112,21 @@ class BookingController extends Controller
                 $newEndTime = $bookingService->calculateEndTime($newStartTime, $menu->duration_minutes);
 
                 // ステータスがキャンセルの場合は枠を空けるのでチェック不要
+                $assignedStaff = null;
                 if ($validated['status'] !== 'cancelled') {
                     $dayOfWeek = $bookingService->extractDayOfWeek($newStartTime);
 
                     $bookingService->checkRegularHoliday($dayOfWeek);
 
-                    $availableStaffCount = $bookingService->getAvailableStaffs($dayOfWeek)->count();
+                    $availableStaffs = $bookingService->getAvailableStaffs($dayOfWeek);
 
-                    $overlappingCount = $bookingService->countOverlappingBookings($newStartTime, $newEndTime, (int) $id);
-
-                    if ($overlappingCount >= $availableStaffCount) {
-                        throw new \Exception('この時間は予約枠が埋まっています。', 409);
+                    if ($availableStaffs->isEmpty()) {
+                        throw new \Exception('指定された曜日に出勤するスタッフがいません。', 409);
                     }
+
+                    $overlappingBookings = $bookingService->findOverlappingBookingsByStaffs($availableStaffs, $newStartTime, $newEndTime)
+                        ->where('id', '!=', (int) $id);
+                    $assignedStaff = $bookingService->assignStaff($availableStaffs, $overlappingBookings);
                 }
 
                 // キャンセルへの変更、かつ支払い済みの場合の返金処理
@@ -142,14 +142,18 @@ class BookingController extends Controller
                 }
 
                 // 検証を通過したら更新
-                $booking->update([
+                $updateData = [
                     'start_time' => $newStartTime,
                     'end_time' => $newEndTime,
                     'menu_id' => $validated['menu_id'],
                     'status' => $validated['status'],
                     'customer_memo' => $validated['customer_memo'],
-                    'payment_status' => $booking->payment_status, // 返金後のステータスも保存
-                ]);
+                    'payment_status' => $booking->payment_status,
+                ];
+                if ($assignedStaff !== null) {
+                    $updateData['staff_id'] = $assignedStaff->id;
+                }
+                $booking->update($updateData);
 
                 return response()->json(['message' => '予約を更新しました', 'booking' => $booking]);
             });
