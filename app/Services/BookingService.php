@@ -43,6 +43,27 @@ class BookingService
     }
 
     /**
+     * 店舗設定を取得する。レコードが存在しない場合は初期値で作成して返す
+     */
+    public function getOrCreateSettings(): Setting
+    {
+        return Setting::firstOrCreate(
+            ['id' => 1],
+            [
+                'open_time' => '10:00:00',
+                'close_time' => '20:00:00',
+                'regular_holidays' => [],
+                'terms_text' => "当サロンのご利用にあたり、以下の規約にご同意ください。\n\n1. キャンセルについて...",
+                'booking_deadline_type' => 'time_based',
+                'booking_deadline_hours' => 2,
+                'booking_deadline_days' => 1,
+                'booking_deadline_time' => '17:00:00',
+                'cancel_deadline_hours' => 24,
+            ]
+        );
+    }
+
+    /**
      * 指定曜日が店舗の定休日かどうかを返す
      *
      * 定休日設定は60秒キャッシュして DB クエリを削減する。
