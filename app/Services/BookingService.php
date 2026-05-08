@@ -179,8 +179,8 @@ class BookingService
 
                 if ($isValidSlot) {
                     $overlappingCount = $bookings->filter(function ($booking) use ($currentTime, $endTime) {
-                        return Carbon::parse((string) $booking->start_time)->lt($endTime)
-                            && Carbon::parse((string) $booking->end_time)->gt($currentTime);
+                        return $booking->start_time->lt($endTime)
+                            && $booking->end_time->gt($currentTime);
                     })->count();
 
                     if ($overlappingCount < $staffCount) {
