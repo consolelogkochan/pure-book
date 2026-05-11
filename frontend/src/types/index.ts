@@ -78,6 +78,18 @@ export interface SurveyQuestion {
   is_required: boolean;
 }
 
+// --- Search ---
+
+export interface PaginationInfo {
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
+export interface DisplayBooking extends Booking {
+  formattedSurveyResponse: string;
+}
+
 // --- Settings ---
 
 export interface StoreSetting {
