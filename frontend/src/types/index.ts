@@ -78,6 +78,13 @@ export interface SurveyQuestion {
   is_required: boolean;
 }
 
+// --- BookingSearch ---
+
+export interface SearchFormData {
+  booking_reference: string;
+  email: string;
+}
+
 // --- Search ---
 
 export interface PaginationInfo {
