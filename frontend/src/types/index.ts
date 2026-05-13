@@ -78,6 +78,13 @@ export interface SurveyQuestion {
   is_required: boolean;
 }
 
+// --- AdminLogin ---
+
+export interface LoginFormData {
+  email: string;
+  password: string;
+}
+
 // --- BookingSearch ---
 
 export interface SearchFormData {
