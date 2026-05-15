@@ -1,94 +1,36 @@
-import { useState, useEffect } from 'react';
-import axios from '../../../axios';
+import { useMenusSettings } from '../../../hooks/useMenusSettings';
+import { MenuFormModal } from '../../../components/admin/MenuFormModal';
 import { Button } from '../../../components/Button';
-import type { Menu } from '../../../types';
 
 export const MenusSettings = () => {
-  const [menus, setMenus] = useState<Menu[]>([]);
-  const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
-  const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
-
-  // フォーム用のState
-  const [formData, setFormData] = useState({ name: '', price: 0, duration_minutes: 60 });
-
-  const [isLoading, setIsLoading] = useState(true);
-
-  // 1. 初回マウント時にメニュー一覧を取得
-  const fetchMenus = async () => {
-    try {
-      const res = await axios.get('/admin/menus');
-      setMenus(res.data);
-    } catch (error) {
-      console.error('メニューの取得に失敗しました', error);
-    } finally {
-      setIsLoading(false); 
-    }
-  };
-
-  useEffect(() => {
-    fetchMenus();
-  }, []);
-
-  // 2.  削除の代わりにステータス切り替え
-  const handleToggleStatus = async (menu: Menu) => {
-    const actionText = menu.is_active ? '非公開' : '公開';
-    if (!window.confirm(`本当に「${menu.name}」を${actionText}にしますか？`)) return;
-
-    try {
-      await axios.patch(`/admin/menus/${menu.id}/toggle-status`, {}, {
-        headers: { 'Accept': 'application/json' },
-      });
-      fetchMenus(); // 成功したら一覧を再取得して画面を更新
-    } catch (error) {
-      alert('ステータスの変更に失敗しました');
-    }
-  };
-
-  // 3. モーダルを開く処理（新規 or 編集）
-  const openModal = (menu?: Menu) => {
-    if (menu) {
-      setEditingMenu(menu);
-      setFormData({ name: menu.name, price: menu.price, duration_minutes: menu.duration_minutes });
-    } else {
-      setEditingMenu(null);
-      setFormData({ name: '', price: 0, duration_minutes: 60 });
-    }
-    setIsMenuModalOpen(true);
-  };
-
-  // 4. 保存処理（新規作成 or 更新）
-  const handleSave = async () => {
-    const url = editingMenu 
-      ? `/admin/menus/${editingMenu.id}` 
-      : '/admin/menus';
-    
-    const method = editingMenu ? 'put' : 'post';
-
-    try {
-      await axios({
-        method: method,
-        url: url,
-        data: formData, 
-        headers: { 'Accept': 'application/json' },
-      });
-      setIsMenuModalOpen(false);
-      fetchMenus(); // 一覧を再取得
-    } catch (error) {
-      alert('保存に失敗しました');
-    }
-  };
+  const {
+    menus, isLoading, isSaving,
+    isMenuModalOpen, editingMenu, confirmingMenu,
+    message, messageType,
+    fetchMenus, openModal, closeModal,
+    requestToggle, confirmToggle, cancelToggle,
+  } = useMenusSettings();
 
   if (isLoading) return <div className="p-4 text-slate-500">読み込み中...</div>;
 
   return (
     <div className="space-y-6 animate-fade-in relative">
+
+      {message && (
+        <div className={`p-3 rounded-lg text-sm font-medium ${
+          messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {message}
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-4 sm:gap-0">
         <h2 className="text-xl font-bold text-slate-800">メニュー登録</h2>
         <Button onClick={() => openModal()} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-4 text-sm w-full sm:w-auto">
           ＋ 新規メニュー追加
         </Button>
       </div>
-      
+
       <div className="overflow-x-auto pb-2">
         <table className="w-full text-left border-collapse whitespace-nowrap min-w-150">
           <thead className="bg-slate-50 border-b border-slate-200">
@@ -112,10 +54,16 @@ export const MenusSettings = () => {
                 <td className="p-3 text-slate-600">¥{menu.price.toLocaleString()}</td>
                 <td className="p-3 text-slate-600">{menu.duration_minutes}分</td>
                 <td className="p-3 text-right space-x-2">
-                  <button onClick={() => openModal(menu)} className="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-100 font-bold">編集</button>
-                  <button 
-                    onClick={() => handleToggleStatus(menu)} 
-                    className={`text-sm border px-3 py-1 rounded font-bold ${menu.is_active ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-blue-200 text-blue-600 hover:bg-blue-50'}`}
+                  <button onClick={() => openModal(menu)} className="text-sm border border-slate-300 px-3 py-1 rounded hover:bg-slate-100 font-bold">
+                    編集
+                  </button>
+                  <button
+                    onClick={() => requestToggle(menu)}
+                    className={`text-sm border px-3 py-1 rounded font-bold ${
+                      menu.is_active
+                        ? 'border-red-200 text-red-600 hover:bg-red-50'
+                        : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+                    }`}
                   >
                     {menu.is_active ? '非公開にする' : '公開する'}
                   </button>
@@ -123,37 +71,48 @@ export const MenusSettings = () => {
               </tr>
             ))}
             {menus.length === 0 && (
-              <tr><td colSpan={5} className="p-4 text-center text-slate-500">メニューが登録されていません</td></tr>
+              <tr>
+                <td colSpan={5} className="p-4 text-center text-slate-500">メニューが登録されていません</td>
+              </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {isMenuModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-slate-800 mb-4">{editingMenu ? 'メニューの編集' : 'メニューの追加'}</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold mb-1">メニュー名</label>
-                <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold mb-1">料金 (円)</label>
-                <input type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold mb-1">所要時間 (分)</label>
-                <input type="number" step="10" value={formData.duration_minutes} onChange={e => setFormData({...formData, duration_minutes: Number(e.target.value)})} className="w-full border rounded px-3 py-2" />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button onClick={() => setIsMenuModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded">キャンセル</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">保存する</button>
+      {confirmingMenu && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-bold text-slate-800 mb-2">確認</h3>
+            <p className="text-slate-600 mb-6 text-sm">
+              「{confirmingMenu.name}」を{confirmingMenu.is_active ? '非公開' : '公開'}にしますか？
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={cancelToggle}
+                className="flex-1 py-2 bg-gray-200 text-gray-800 rounded font-bold hover:bg-gray-300 transition"
+              >
+                やめる
+              </button>
+              <button
+                onClick={confirmToggle}
+                disabled={isSaving}
+                className={`flex-1 py-2 rounded font-bold text-white transition ${
+                  isSaving ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {isSaving ? '処理中...' : '確定する'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <MenuFormModal
+        isOpen={isMenuModalOpen}
+        editingMenu={editingMenu}
+        onSuccess={fetchMenus}
+        onClose={closeModal}
+      />
     </div>
   );
 };
