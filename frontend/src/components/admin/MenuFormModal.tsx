@@ -75,44 +75,47 @@ export const MenuFormModal = ({ isOpen, editingMenu, onSuccess, onClose }: Props
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold mb-1">メニュー名</label>
-            <input
-              {...register('name', { required: 'メニュー名を入力してください' })}
-              type="text"
-              className="w-full border rounded px-3 py-2"
-            />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
-          </div>
+          {/* isSubmitting 中は入力フィールドを無効化。キャンセルボタンは fieldset 外で常に押せる状態を保つ */}
+          <fieldset disabled={isSubmitting} className="border-0 p-0 m-0 space-y-4">
+            <div>
+              <label className="block text-sm font-bold mb-1">メニュー名</label>
+              <input
+                {...register('name', { required: 'メニュー名を入力してください' })}
+                type="text"
+                className="w-full border rounded px-3 py-2"
+              />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+            </div>
 
-          <div>
-            <label className="block text-sm font-bold mb-1">料金 (円)</label>
-            <input
-              {...register('price', {
-                required: '料金を入力してください',
-                min: { value: 0, message: '0円以上で入力してください' },
-                valueAsNumber: true,
-              })}
-              type="number"
-              className="w-full border rounded px-3 py-2"
-            />
-            {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
-          </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">料金 (円)</label>
+              <input
+                {...register('price', {
+                  required: '料金を入力してください',
+                  min: { value: 0, message: '0円以上で入力してください' },
+                  valueAsNumber: true,
+                })}
+                type="number"
+                className="w-full border rounded px-3 py-2"
+              />
+              {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
+            </div>
 
-          <div>
-            <label className="block text-sm font-bold mb-1">所要時間 (分)</label>
-            <input
-              {...register('duration_minutes', {
-                required: '所要時間を入力してください',
-                min: { value: 10, message: '10分以上で入力してください' },
-                valueAsNumber: true,
-              })}
-              type="number"
-              step="10"
-              className="w-full border rounded px-3 py-2"
-            />
-            {errors.duration_minutes && <p className="text-red-500 text-xs mt-1">{errors.duration_minutes.message}</p>}
-          </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">所要時間 (分)</label>
+              <input
+                {...register('duration_minutes', {
+                  required: '所要時間を入力してください',
+                  min: { value: 10, message: '10分以上で入力してください' },
+                  valueAsNumber: true,
+                })}
+                type="number"
+                step="10"
+                className="w-full border rounded px-3 py-2"
+              />
+              {errors.duration_minutes && <p className="text-red-500 text-xs mt-1">{errors.duration_minutes.message}</p>}
+            </div>
+          </fieldset>
 
           <div className="mt-6 flex justify-end space-x-3">
             <button

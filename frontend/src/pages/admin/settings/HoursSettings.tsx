@@ -12,10 +12,12 @@ const DAYS_OF_WEEK = [
 ] as const;
 
 export const HoursSettings = () => {
-  const { form, isLoading, isSaving, message, messageType, toggleHoliday, isHoliday, saveSettings } = useHoursSettings();
+  const { form, isLoading, isSaving, fetchFailed, message, messageType, toggleHoliday, isHoliday, saveSettings } = useHoursSettings();
   const { register } = form;
 
   if (isLoading) return <div className="p-4 text-slate-500">読み込み中...</div>;
+
+  const saveDisabled = isSaving || fetchFailed;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
@@ -35,81 +37,85 @@ export const HoursSettings = () => {
         </div>
         <Button
           onClick={saveSettings}
-          disabled={isSaving}
-          colorClass={`${isSaving ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} py-2 px-6 text-sm shadow-sm font-bold`}
+          disabled={saveDisabled}
+          colorClass={`${saveDisabled ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} py-2 px-6 text-sm shadow-sm font-bold`}
         >
           {isSaving ? '保存中...' : '設定を保存する'}
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8">
+      {/* Issue 3: isSaving 中はフォーム全体を無効化 */}
+      <fieldset disabled={isSaving} className="border-0 p-0 m-0">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8">
 
-        <section>
-          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-            <span className="bg-blue-100 text-blue-600 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">1</span>
-            営業時間
-          </h3>
-          <div className="flex items-center space-x-4">
-            <input
-              {...register('open_time')}
-              type="time"
-              className="border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+          <section>
+            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
+              <span className="bg-blue-100 text-blue-600 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">1</span>
+              営業時間
+            </h3>
+            <div className="flex items-center space-x-4">
+              <input
+                {...register('open_time')}
+                type="time"
+                className="border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <span className="font-bold text-slate-400">〜</span>
+              <input
+                {...register('close_time')}
+                type="time"
+                className="border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+          </section>
+
+          <hr className="border-slate-100" />
+
+          <section>
+            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
+              <span className="bg-blue-100 text-blue-600 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">2</span>
+              定休日の設定
+            </h3>
+            <div className="flex flex-wrap gap-4">
+              {DAYS_OF_WEEK.map(day => {
+                const isChecked = isHoliday(day.key);
+                return (
+                  <label key={day.key} className="flex items-center space-x-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleHoliday(day.key)}
+                      className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    />
+                    <span className={`font-medium ${isChecked ? 'text-slate-800' : 'text-slate-500 group-hover:text-slate-700'}`}>
+                      {day.label}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+
+          <hr className="border-slate-100" />
+
+          <section>
+            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
+              <span className="bg-blue-100 text-blue-600 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">3</span>
+              利用規約テキスト
+            </h3>
+            <p className="text-sm text-slate-500 mb-3">
+              お客様が予約を確定する前に同意を求める規約文を入力してください。
+            </p>
+            <textarea
+              {...register('terms_text')}
+              rows={8}
+              className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed text-slate-700"
+              placeholder="利用規約を入力..."
             />
-            <span className="font-bold text-slate-400">〜</span>
-            <input
-              {...register('close_time')}
-              type="time"
-              className="border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-          </div>
-        </section>
+          </section>
 
-        <hr className="border-slate-100" />
+        </div>
+      </fieldset>
 
-        <section>
-          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-            <span className="bg-blue-100 text-blue-600 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">2</span>
-            定休日の設定
-          </h3>
-          <div className="flex flex-wrap gap-4">
-            {DAYS_OF_WEEK.map(day => {
-              const isChecked = isHoliday(day.key);
-              return (
-                <label key={day.key} className="flex items-center space-x-2 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleHoliday(day.key)}
-                    className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                  />
-                  <span className={`font-medium ${isChecked ? 'text-slate-800' : 'text-slate-500 group-hover:text-slate-700'}`}>
-                    {day.label}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </section>
-
-        <hr className="border-slate-100" />
-
-        <section>
-          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-            <span className="bg-blue-100 text-blue-600 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">3</span>
-            利用規約テキスト
-          </h3>
-          <p className="text-sm text-slate-500 mb-3">
-            お客様が予約を確定する前に同意を求める規約文を入力してください。
-          </p>
-          <textarea
-            {...register('terms_text')}
-            rows={8}
-            className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed text-slate-700"
-            placeholder="利用規約を入力..."
-          />
-        </section>
-
-      </div>
     </div>
   );
 };

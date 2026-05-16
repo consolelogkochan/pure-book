@@ -18,28 +18,25 @@ const DEFAULT_SETTINGS: StoreSetting = {
 
 const trimSeconds = (time: string) => time.substring(0, 5);
 
-interface UseHoursSettingsReturn {
+interface UsePeriodSettingsReturn {
   form: UseFormReturn<StoreSetting>;
   isLoading: boolean;
   isSaving: boolean;
   fetchFailed: boolean;
   message: string;
   messageType: 'success' | 'error' | null;
-  toggleHoliday: (dayKey: string) => void;
-  isHoliday: (dayKey: string) => boolean;
   saveSettings: () => Promise<void>;
 }
 
-export const useHoursSettings = (): UseHoursSettingsReturn => {
+export const usePeriodSettings = (): UsePeriodSettingsReturn => {
   const form = useForm<StoreSetting>({ defaultValues: DEFAULT_SETTINGS });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [fetchFailed, setFetchFailed] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false); // Issue 4
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
 
-  const { reset, getValues, setValue, watch } = form;
-  const watchedHolidays = watch('regular_holidays');
+  const { reset, getValues, watch } = form;
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -60,7 +57,7 @@ export const useHoursSettings = (): UseHoursSettingsReturn => {
         });
       } catch (error) {
         console.error('設定の取得に失敗しました', error);
-        setFetchFailed(true);
+        setFetchFailed(true); // Issue 4: フェッチ失敗を記録して保存を封じる
         setMessage('設定の取得に失敗しました。ページを再読み込みしてください。');
         setMessageType('error');
       } finally {
@@ -76,40 +73,32 @@ export const useHoursSettings = (): UseHoursSettingsReturn => {
     return () => subscription.unsubscribe();
   }, [watch]);
 
-  const toggleHoliday = (dayKey: string) => {
-    const current = getValues('regular_holidays');
-    const updated = current.includes(dayKey)
-      ? current.filter(d => d !== dayKey)
-      : [...current, dayKey];
-    setValue('regular_holidays', updated);
-  };
-
-  const isHoliday = (dayKey: string) => watchedHolidays.includes(dayKey);
-
   const saveSettings = async () => {
     if (isSaving) return;
-
-    const { open_time, close_time, regular_holidays, terms_text } = getValues();
-    if (open_time >= close_time) {
-      setMessage('閉店時間は開店時間より後に設定してください。');
-      setMessageType('error');
-      return;
-    }
-
     setIsSaving(true);
     try {
-      // Issue 5: 保存直前に最新値を取得し、PeriodSettings の変更を保持したままマージして送信
+      // Issue 5: 保存直前に最新値を取得し、他ページの変更を保持したままマージして送信
       const latest = await axios.get('/admin/settings');
+      const {
+        booking_deadline_type,
+        booking_deadline_hours,
+        booking_deadline_days,
+        booking_deadline_time,
+        cancel_deadline_hours,
+      } = getValues();
+
       await axios.put('/admin/settings', {
         ...latest.data,
-        open_time,
-        close_time,
-        regular_holidays,
-        terms_text,
+        booking_deadline_type,
+        booking_deadline_hours,
+        booking_deadline_days,
+        booking_deadline_time,
+        cancel_deadline_hours,
       }, {
         headers: { Accept: 'application/json' },
       });
-      setMessage('店舗設定を保存しました');
+
+      setMessage('予約受付ルールを保存しました');
       setMessageType('success');
     } catch (error) {
       setMessage('保存に失敗しました。通信環境をご確認ください。');
@@ -120,5 +109,5 @@ export const useHoursSettings = (): UseHoursSettingsReturn => {
     }
   };
 
-  return { form, isLoading, isSaving, fetchFailed, message, messageType, toggleHoliday, isHoliday, saveSettings };
+  return { form, isLoading, isSaving, fetchFailed, message, messageType, saveSettings };
 };
