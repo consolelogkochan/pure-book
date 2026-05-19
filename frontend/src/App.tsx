@@ -1,8 +1,8 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { BookingWizard } from './pages/BookingWizard'; // 👈 追加
-import { BookingSearch } from './pages/BookingSearch'; // 👈 新しく追加
 import { AdminCalendar } from './pages/AdminCalendar'; // 👈 追加
 import { AdminSearch } from './pages/AdminSearch'; // 👈 追加
 import { AdminSettingsLayout } from './layouts/AdminSettingsLayout';
@@ -15,6 +15,11 @@ import { ResourceSettings } from './pages/admin/settings/ResourceSettings';
 import AdminLogin from './pages/admin/AdminLogin';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+
+// Stripe を含むモジュールチェーンを遅延ロードし、管理画面での Stripe 初期化を防ぐ
+const BookingSearch = lazy(() =>
+  import('./pages/BookingSearch').then(m => ({ default: m.BookingSearch }))
+);
 
 // ==========================================
 // アプリの骨組み（ルーティング設定）
@@ -38,7 +43,11 @@ function App() {
           <Route path="/search" element={
             <div className="flex flex-col min-h-screen bg-gray-50">
               <Header />
-              <main className="grow"><BookingSearch /></main>
+              <main className="grow">
+                <Suspense fallback={<div className="p-4 text-slate-500">読み込み中...</div>}>
+                  <BookingSearch />
+                </Suspense>
+              </main>
               <Footer />
             </div>
           } />
