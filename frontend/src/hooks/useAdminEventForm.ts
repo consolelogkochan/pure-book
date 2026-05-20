@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { isAxiosError } from 'axios';
 import axiosInstance from '../axios';
@@ -24,6 +25,8 @@ interface UseAdminEventFormProps {
 interface UseAdminEventFormReturn {
   form: UseFormReturn<AdminEventFormData>;
   onSubmit: (data: AdminEventFormData) => Promise<void>;
+  message: string;
+  messageType: 'success' | 'error' | null;
 }
 
 const extractDate = (startTime: string | undefined): string => {
@@ -40,6 +43,10 @@ export const useAdminEventForm = ({
   selectedBooking,
   onSuccess,
 }: UseAdminEventFormProps): UseAdminEventFormReturn => {
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const form = useForm<AdminEventFormData>({
     defaultValues: {
       start_date_only: extractDate(selectedBooking.start_time),
@@ -53,7 +60,26 @@ export const useAdminEventForm = ({
     },
   });
 
+  // Issue 3: unmount 時に成功タイマーをキャンセル（ドロワーを早期に閉じた場合の二重呼び出し防止）
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
+
+  const { watch } = form;
+  // Issue 1: message と messageType を両方リセット（片方だけ残ると次の成功バナーが誤色になる）
+  useEffect(() => {
+    const subscription = watch(() => {
+      setMessage('');
+      setMessageType(null);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
   const onSubmit = async (data: AdminEventFormData): Promise<void> => {
+    setMessage('');
+    setMessageType(null);
     const payload = {
       start_time: `${data.start_date_only} ${data.start_time_only}:00`,
       menu_id: data.menu_id,
@@ -67,20 +93,23 @@ export const useAdminEventForm = ({
     try {
       if (selectedBooking.isNew) {
         await axiosInstance.post('/admin/bookings', payload);
-        alert('新規予約を登録しました！');
       } else {
         await axiosInstance.put(`/admin/bookings/${selectedBooking.id}`, payload);
-        alert('予約情報を更新しました！');
       }
-      onSuccess();
+      // Issue 3: 成功バナーを一瞬表示してからドロワーを閉じる
+      const successMessage = selectedBooking.isNew ? '新規予約を登録しました' : '予約情報を更新しました';
+      setMessage(successMessage);
+      setMessageType('success');
+      successTimerRef.current = setTimeout(onSuccess, 900);
     } catch (error: unknown) {
       if (isAxiosError(error) && error.response?.data?.message) {
-        alert(error.response.data.message);
+        setMessage(error.response.data.message);
       } else {
-        alert('ステータスの更新に失敗しました');
+        setMessage('保存に失敗しました。通信環境をご確認ください。');
       }
+      setMessageType('error');
     }
   };
 
-  return { form, onSubmit };
+  return { form, onSubmit, message, messageType };
 };
