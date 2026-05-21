@@ -7,22 +7,27 @@ interface Props {
   form: UseFormReturn<SearchFormInputs>;
   menus: Menu[];
   isLoading: boolean;
+  isDownloading: boolean;
   onSubmit: (data: SearchFormInputs) => void;
   onDownloadCsv: () => void;
 }
 
-export const SearchForm = ({ form, menus, isLoading, onSubmit, onDownloadCsv }: Props) => {
+export const SearchForm = ({ form, menus, isLoading, isDownloading, onSubmit, onDownloadCsv }: Props) => {
   const { register, handleSubmit } = form;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-slate-800">予約検索</h2>
-        <Button onClick={onDownloadCsv} colorClass="bg-green-600 hover:bg-green-700 flex items-center gap-2 text-sm">
+        <Button
+          onClick={onDownloadCsv}
+          disabled={isDownloading}
+          colorClass="bg-green-600 hover:bg-green-700 flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          CSV出力
+          {isDownloading ? 'ダウンロード中...' : 'CSV出力'}
         </Button>
       </div>
 

@@ -3,10 +3,11 @@ import type { BookingStatus, DisplayBooking } from '../../types';
 interface Props {
   results: DisplayBooking[];
   isLoading: boolean;
+  isSaving: boolean;
   onStatusChange: (id: number, newStatus: BookingStatus) => void;
 }
 
-export const BookingTable = ({ results, isLoading, onStatusChange }: Props) => {
+export const BookingTable = ({ results, isLoading, isSaving, onStatusChange }: Props) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse whitespace-nowrap min-w-300">
@@ -54,7 +55,8 @@ export const BookingTable = ({ results, isLoading, onStatusChange }: Props) => {
                   <select
                     value={result.status}
                     onChange={e => onStatusChange(result.id, e.target.value as BookingStatus)}
-                    className={`text-sm font-bold border rounded px-2 py-1 outline-none ${
+                    disabled={isSaving}
+                    className={`text-sm font-bold border rounded px-2 py-1 outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
                       result.status === 'cancelled' ? 'bg-slate-100 text-slate-500 border-slate-300' : 'bg-blue-50 text-blue-700 border-blue-200'
                     }`}
                   >
