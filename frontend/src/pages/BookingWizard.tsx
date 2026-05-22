@@ -13,6 +13,7 @@ export const BookingWizard = () => {
     completedBookingRef,
     surveyQuestions,
     termsText,
+    errorMessage,
     form,
     handleMenuSelect,
     handleDateChange,
@@ -48,6 +49,13 @@ export const BookingWizard = () => {
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-sm mt-8">
       <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">新規ご予約</h2>
+
+      {/* Step 3 未表示時のエラーバナー（初期取得失敗・メニュー未選択など） */}
+      {errorMessage && !selectedTime && (
+        <div className="mb-6 p-3 rounded-lg text-sm font-medium bg-red-100 text-red-700">
+          {errorMessage}
+        </div>
+      )}
 
       {/* --- Step 1: メニュー --- */}
       <div className="mb-8">
@@ -109,7 +117,8 @@ export const BookingWizard = () => {
         <div className="mb-8 animate-fade-in-up">
           <h3 className="text-lg font-bold mb-4 text-blue-600 border-b pb-2">Step 3: お客様情報の入力</h3>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 bg-gray-50 p-6 rounded-lg border">
+          <form onSubmit={handleSubmit(onSubmit)} className="bg-gray-50 p-6 rounded-lg border">
+            <fieldset disabled={isSubmitting} className="border-0 p-0 m-0 space-y-4">
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">お名前 <span className="text-red-500">*</span></label>
@@ -239,6 +248,13 @@ export const BookingWizard = () => {
               </div>
             )}
 
+            {/* Step 3 表示中のエラーバナー（送信エラーなど）— 送信ボタン直上に配置 */}
+            {errorMessage && (
+              <div className="p-3 rounded-lg text-sm font-medium bg-red-100 text-red-700">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="pt-4 text-center">
               <button
                 type="submit"
@@ -250,6 +266,7 @@ export const BookingWizard = () => {
                 {isSubmitting ? '予約処理中...' : 'この内容で予約を確定する'}
               </button>
             </div>
+            </fieldset>
           </form>
         </div>
       )}

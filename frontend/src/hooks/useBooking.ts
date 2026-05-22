@@ -14,7 +14,6 @@ export interface BookingFormData {
 }
 
 interface UseBookingReturn {
-  // 状態
   menus: Menu[];
   selectedMenu: Menu | null;
   selectedDate: Date | null;
@@ -24,9 +23,8 @@ interface UseBookingReturn {
   completedBookingRef: string | null;
   surveyQuestions: SurveyQuestion[];
   termsText: string | null;
-  // フォーム
+  errorMessage: string | null;
   form: UseFormReturn<BookingFormData>;
-  // アクション
   handleMenuSelect: (menu: Menu) => void;
   handleDateChange: (value: Date | [Date | null, Date | null] | null) => Promise<void>;
   handleTimeSelect: (slot: string) => void;
@@ -68,8 +66,16 @@ export const useBooking = (): UseBookingReturn => {
   const [completedBookingRef, setCompletedBookingRef] = useState<string | null>(null);
   const [surveyQuestions, setSurveyQuestions] = useState<SurveyQuestion[]>([]);
   const [termsText, setTermsText] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm<BookingFormData>();
+
+  // Issue 2: フィールド編集時にエラーバナーをクリア（バナーとバリデーションエラーの並立を防ぐ）
+  const { watch } = form;
+  useEffect(() => {
+    const subscription = watch(() => setErrorMessage(null));
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -89,49 +95,63 @@ export const useBooking = (): UseBookingReturn => {
         setSurveyQuestions(formattedSurvey);
 
         setTermsText(settingsRes.data.terms_text);
-      } catch (error) {
-        console.error('データの取得に失敗しました', error);
+      } catch {
+        setErrorMessage('データの取得に失敗しました。ページを再読み込みしてください。');
       }
     };
     fetchData();
   }, []);
 
   const handleMenuSelect = (menu: Menu) => {
+    setErrorMessage(null);
     setSelectedMenu(menu);
+  };
+
+  // エラーメッセージに触れずスロットのみを更新する内部ヘルパー。
+  // onSubmit の 409 後スロット再取得で呼ぶことで、エラーメッセージが消えるのを防ぐ。
+  const refreshAvailableSlots = async (date: Date, menu: Menu) => {
+    try {
+      const response = await axiosInstance.get('/available-slots', {
+        params: { date: formatDateString(date), menu_id: menu.id },
+      });
+      setAvailableSlots(response.data.available_slots || response.data || []);
+    } catch {
+      // Issue 3: スロット取得失敗をユーザーに通知（空き無しと区別できるようにする）
+      setErrorMessage('空き時間の取得に失敗しました。日付を選び直してください。');
+    }
   };
 
   const handleDateChange = async (value: Date | [Date | null, Date | null] | null) => {
     const date = value as Date;
     setSelectedDate(date);
     setSelectedTime(null);
+    setErrorMessage(null);
 
     if (!selectedMenu) {
-      alert('先にメニューを選択してください');
+      setErrorMessage('先にメニューを選択してください。');
       return;
     }
 
-    try {
-      const response = await axiosInstance.get('/available-slots', {
-        params: { date: formatDateString(date), menu_id: selectedMenu.id },
-      });
-      setAvailableSlots(response.data.available_slots || response.data || []);
-    } catch (error) {
-      console.error('空き時間の取得に失敗しました', error);
-    }
+    await refreshAvailableSlots(date, selectedMenu);
   };
 
   const handleTimeSelect = (slot: string) => {
+    setErrorMessage(null);
     setSelectedTime(slot);
   };
 
   const onSubmit = async (data: BookingFormData) => {
-    if (!selectedMenu || !selectedDate || !selectedTime) return;
+    const menu = selectedMenu;
+    const date = selectedDate;
+    const time = selectedTime;
+    if (!menu || !date || !time) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     const payload = {
-      menu_id: selectedMenu.id,
-      start_time: buildStartTime(selectedDate, selectedTime),
+      menu_id: menu.id,
+      start_time: buildStartTime(date, time),
       customer_name: data.customer_name,
       customer_email: data.customer_email,
       customer_phone: data.customer_phone,
@@ -145,16 +165,13 @@ export const useBooking = (): UseBookingReturn => {
     } catch (error: unknown) {
       if (isAxiosError(error)) {
         if (error.response?.status === 429) {
-          alert('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
-          return;
-        }
-        if (error.response?.status === 409) {
-          alert('申し訳ありません！タッチの差でこの時間は埋まってしまいました。別の時間をお選びください。');
-          if (selectedDate) {
-            await handleDateChange(selectedDate);
-          }
+          setErrorMessage('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
+        } else if (error.response?.status === 409) {
+          setErrorMessage('申し訳ありません！タッチの差でこの時間は埋まってしまいました。別の時間をお選びください。');
+          // refreshAvailableSlots で再取得することで、setErrorMessage が上書きされない
+          await refreshAvailableSlots(date, menu);
         } else {
-          alert('予約の保存に失敗しました。入力内容をご確認ください。');
+          setErrorMessage('予約の保存に失敗しました。入力内容をご確認ください。');
         }
       }
     } finally {
@@ -172,6 +189,7 @@ export const useBooking = (): UseBookingReturn => {
     completedBookingRef,
     surveyQuestions,
     termsText,
+    errorMessage,
     form,
     handleMenuSelect,
     handleDateChange,
