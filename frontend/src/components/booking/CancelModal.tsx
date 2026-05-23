@@ -1,9 +1,10 @@
 interface Props {
   onConfirm: () => Promise<void>;
   onClose: () => void;
+  isCancelling?: boolean;
 }
 
-export const CancelModal = ({ onConfirm, onClose }: Props) => {
+export const CancelModal = ({ onConfirm, onClose, isCancelling }: Props) => {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 rounded-lg max-w-sm w-full shadow-xl">
@@ -14,15 +15,17 @@ export const CancelModal = ({ onConfirm, onClose }: Props) => {
         <div className="flex gap-4">
           <button
             onClick={onClose}
-            className="flex-1 py-2 bg-gray-200 text-gray-800 rounded font-bold hover:bg-gray-300 transition"
+            disabled={isCancelling}
+            className="flex-1 py-2 bg-gray-200 text-gray-800 rounded font-bold hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             やめる
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-2 bg-red-600 text-white rounded font-bold hover:bg-red-700 transition"
+            disabled={isCancelling}
+            className="flex-1 py-2 bg-red-600 text-white rounded font-bold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            キャンセル確定
+            {isCancelling ? 'キャンセル処理中...' : 'キャンセル確定'}
           </button>
         </div>
       </div>

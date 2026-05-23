@@ -12,6 +12,7 @@ export const BookingSearch = () => {
     isModalOpen,
     isCancelled,
     isSearching,
+    isCancelling,
     errorMessage,
     onSearch,
     handleCancel,
@@ -57,6 +58,7 @@ export const BookingSearch = () => {
         <CancelModal
           onConfirm={handleCancel}
           onClose={closeCancelModal}
+          isCancelling={isCancelling}
         />
       )}
     </div>

@@ -45,9 +45,7 @@ export const useAdminLogin = (): UseAdminLoginReturn => {
       if (isAxiosError(error)) {
         if (error.response?.status === 429) {
           setErrorMessage('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
-          return;
-        }
-        if (error.response?.status === 401 || error.response?.status === 403) {
+        } else if (error.response?.status === 401 || error.response?.status === 403) {
           setErrorMessage(error.response.data?.message || '認証に失敗しました。');
         } else {
           setErrorMessage('ログインに失敗しました。通信環境をご確認ください。');

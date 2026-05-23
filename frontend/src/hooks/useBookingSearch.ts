@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { isAxiosError } from 'axios';
 import axios from '../axios';
@@ -11,6 +11,7 @@ interface UseBookingSearchReturn {
   isModalOpen: boolean;
   isCancelled: boolean;
   isSearching: boolean;
+  isCancelling: boolean;
   errorMessage: string | null;
   onSearch: (data: SearchFormData) => Promise<void>;
   handleCancel: () => Promise<void>;
@@ -28,9 +29,17 @@ export const useBookingSearch = (): UseBookingSearchReturn => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const { watch } = form;
+  useEffect(() => {
+    const subscription = watch(() => setErrorMessage(null));
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
   const onSearch = async (data: SearchFormData): Promise<void> => {
+    if (isSearching) return;
     setIsSearching(true);
     setErrorMessage(null);
     setSearchResult(null);
@@ -46,42 +55,47 @@ export const useBookingSearch = (): UseBookingSearchReturn => {
     } catch (error: unknown) {
       if (isAxiosError(error)) {
         if (error.response?.status === 429) {
-          alert('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
-          return;
-        }
-        if (error.response?.status === 404) {
+          setErrorMessage('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
+        } else if (error.response?.status === 404) {
           setErrorMessage('ご指定の予約が見つかりませんでした。入力内容をご確認ください。');
-          return;
+        } else {
+          setErrorMessage('検索中にエラーが発生しました。');
         }
+      } else {
+        setErrorMessage('検索中にエラーが発生しました。');
       }
-      setErrorMessage('検索中にエラーが発生しました。');
     } finally {
       setIsSearching(false);
     }
   };
 
   const handleCancel = async (): Promise<void> => {
-    if (!searchResult) return;
+    if (!searchResult || isCancelling) return;
+    setIsCancelling(true);
+    setErrorMessage(null);
 
     try {
       await axios.delete(`/bookings/${searchResult.booking_reference}`, {
         data: { email: form.getValues('email') },
       });
       setIsModalOpen(false);
+      setSearchResult(null);
       setIsCancelled(true);
     } catch (error: unknown) {
       setIsModalOpen(false);
       if (isAxiosError(error)) {
         if (error.response?.status === 429) {
-          alert('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
-          return;
+          setErrorMessage('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');
+        } else if (error.response?.data?.message) {
+          setErrorMessage(error.response.data.message);
+        } else {
+          setErrorMessage('キャンセルの処理に失敗しました。お手数ですが店舗まで直接ご連絡ください。');
         }
-        if (error.response?.data?.message) {
-          alert(error.response.data.message);
-          return;
-        }
+      } else {
+        setErrorMessage('キャンセルの処理に失敗しました。お手数ですが店舗まで直接ご連絡ください。');
       }
-      alert('キャンセルの処理に失敗しました。お手数ですが店舗まで直接ご連絡ください。');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -98,6 +112,7 @@ export const useBookingSearch = (): UseBookingSearchReturn => {
     isModalOpen,
     isCancelled,
     isSearching,
+    isCancelling,
     errorMessage,
     onSearch,
     handleCancel,
