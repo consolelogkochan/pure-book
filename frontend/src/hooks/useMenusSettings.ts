@@ -6,6 +6,7 @@ interface UseMenusSettingsReturn {
   menus: Menu[];
   isLoading: boolean;
   isSaving: boolean;
+  fetchFailed: boolean;
   isMenuModalOpen: boolean;
   editingMenu: Menu | null;
   confirmingMenu: Menu | null;
@@ -23,26 +24,28 @@ export const useMenusSettings = (): UseMenusSettingsReturn => {
   const [menus, setMenus] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
   const [confirmingMenu, setConfirmingMenu] = useState<Menu | null>(null);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
 
-  // Issue 4: fetchMenus は純粋な再取得のみ担う。isLoading の管理は初回 useEffect に委譲。
+  // 純粋な再取得のみ担う。エラー時は throw — 呼び出し元が責務に応じて処理する。
   const fetchMenus = async () => {
-    try {
-      const res = await axios.get('/admin/menus');
-      setMenus(res.data);
-    } catch (error) {
-      console.error('メニューの取得に失敗しました', error);
-      setMessage('メニューの取得に失敗しました。ページを再読み込みしてください。');
-      setMessageType('error');
-    }
+    const res = await axios.get('/admin/menus');
+    setMenus(res.data);
   };
 
+  // fetchFailed のセットは初回ロード時のみ。
   useEffect(() => {
-    fetchMenus().finally(() => setIsLoading(false));
+    fetchMenus()
+      .catch(() => {
+        setFetchFailed(true);
+        setMessage('データの取得に失敗しました。ページを再読み込みしてください。');
+        setMessageType('error');
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const openModal = (menu?: Menu) => {
@@ -57,22 +60,23 @@ export const useMenusSettings = (): UseMenusSettingsReturn => {
   };
 
   const requestToggle = (menu: Menu) => {
-    setMessage('');
     setConfirmingMenu(menu);
   };
 
   const cancelToggle = () => setConfirmingMenu(null);
 
   const confirmToggle = async () => {
-    if (!confirmingMenu || isSaving) return;
+    if (!confirmingMenu || isSaving || fetchFailed) return;
     const target = confirmingMenu;
+    // 確認UIを即座に非表示にして連打による二重送信の経路を断つ
+    setConfirmingMenu(null);
     setIsSaving(true);
-
+    setMessage('');
     try {
       await axios.patch(`/admin/menus/${target.id}/toggle-status`, {}, {
         headers: { Accept: 'application/json' },
       });
-      await fetchMenus();
+      await fetchMenus().catch(() => {});
       setMessage(`「${target.name}」を${target.is_active ? '非公開' : '公開'}にしました`);
       setMessageType('success');
     } catch (error) {
@@ -80,8 +84,6 @@ export const useMenusSettings = (): UseMenusSettingsReturn => {
       setMessageType('error');
       console.error(error);
     } finally {
-      // Issue 3: 成功・失敗どちらでも確認ダイアログを閉じ、エラーバナーを見えるようにする
-      setConfirmingMenu(null);
       setIsSaving(false);
     }
   };
@@ -90,6 +92,7 @@ export const useMenusSettings = (): UseMenusSettingsReturn => {
     menus,
     isLoading,
     isSaving,
+    fetchFailed,
     isMenuModalOpen,
     editingMenu,
     confirmingMenu,

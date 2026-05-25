@@ -71,6 +71,8 @@ export const useBookingSearch = (): UseBookingSearchReturn => {
 
   const handleCancel = async (): Promise<void> => {
     if (!searchResult || isCancelling) return;
+    // 確認モーダルを即座に非表示にして連打による二重送信の経路を断つ
+    setIsModalOpen(false);
     setIsCancelling(true);
     setErrorMessage(null);
 
@@ -78,11 +80,9 @@ export const useBookingSearch = (): UseBookingSearchReturn => {
       await axios.delete(`/bookings/${searchResult.booking_reference}`, {
         data: { email: form.getValues('email') },
       });
-      setIsModalOpen(false);
       setSearchResult(null);
       setIsCancelled(true);
     } catch (error: unknown) {
-      setIsModalOpen(false);
       if (isAxiosError(error)) {
         if (error.response?.status === 429) {
           setErrorMessage('アクセスが集中しているか、操作が早すぎます。1分ほどお待ちいただいてから再度お試しください。');

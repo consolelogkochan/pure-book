@@ -124,7 +124,7 @@ export const StaffSettings = () => {
       <StaffFormModal
         isOpen={isModalOpen}
         editingStaff={editingStaff}
-        onSuccess={fetchStaffs}
+        onSuccess={() => fetchStaffs().catch(() => {})}
         onClose={closeModal}
       />
     </div>

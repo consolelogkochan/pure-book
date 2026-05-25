@@ -4,7 +4,7 @@ import { Button } from '../../../components/Button';
 
 export const MenusSettings = () => {
   const {
-    menus, isLoading, isSaving,
+    menus, isLoading, isSaving, fetchFailed,
     isMenuModalOpen, editingMenu, confirmingMenu,
     message, messageType,
     fetchMenus, openModal, closeModal,
@@ -26,7 +26,11 @@ export const MenusSettings = () => {
 
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-2 gap-4 sm:gap-0">
         <h2 className="text-xl font-bold text-slate-800">メニュー登録</h2>
-        <Button onClick={() => openModal()} colorClass="bg-blue-600 hover:bg-blue-700 py-2 px-4 text-sm w-full sm:w-auto">
+        <Button
+          onClick={() => openModal()}
+          disabled={fetchFailed}
+          colorClass={`${fetchFailed ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} py-2 px-4 text-sm w-full sm:w-auto`}
+        >
           ＋ 新規メニュー追加
         </Button>
       </div>
@@ -110,7 +114,7 @@ export const MenusSettings = () => {
       <MenuFormModal
         isOpen={isMenuModalOpen}
         editingMenu={editingMenu}
-        onSuccess={fetchMenus}
+        onSuccess={() => fetchMenus().catch(() => {})}
         onClose={closeModal}
       />
     </div>
