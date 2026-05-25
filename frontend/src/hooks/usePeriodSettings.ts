@@ -75,6 +75,7 @@ export const usePeriodSettings = (): UsePeriodSettingsReturn => {
   const saveSettings = async () => {
     if (isSaving || fetchFailed) return;
     setIsSaving(true);
+    setMessage('');
     try {
       // 保存直前に最新値を取得し、他ページの変更を保持したままマージして送信
       const latest = await axios.get('/admin/settings');

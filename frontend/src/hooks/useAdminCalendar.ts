@@ -17,6 +17,8 @@ interface UseAdminCalendarReturn {
   storeSettings: StoreSetting | null;
   menus: Menu[];
   hiddenDays: number[];
+  isLoading: boolean;
+  fetchFailed: boolean;
   fetchEvents: (
     info: { startStr: string; endStr: string },
     successCallback: (events: object[]) => void,
@@ -32,23 +34,34 @@ export const useAdminCalendar = ({ refetchEvents }: UseAdminCalendarProps): UseA
   const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
   const [storeSettings, setStoreSettings] = useState<StoreSetting | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
+  // 純粋な再取得のみ担う。エラー時は throw — 呼び出し元が責務に応じて処理する。
+  // settings はカレンダー表示に必須のため失敗時は throw する。
+  // menus はドロワーフォームのみで使用するため失敗しても throw しない。
+  const fetchInitialData = async () => {
+    const [settingsResult, menusResult] = await Promise.allSettled([
+      axios.get('/admin/settings'),
+      axios.get('/menus'),
+    ]);
+
+    if (settingsResult.status === 'rejected') throw settingsResult.reason;
+
+    setStoreSettings(settingsResult.value.data);
+    if (menusResult.status === 'fulfilled') {
+      setMenus(menusResult.value.data.menus || menusResult.value.data || []);
+    }
+  };
+
+  // fetchFailed のセットは初回ロード時のみ。
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [settingsRes, menusRes] = await Promise.all([
-          axios.get('/admin/settings'),
-          axios.get('/menus'),
-        ]);
-        setStoreSettings(settingsRes.data);
-        setMenus(menusRes.data.menus || menusRes.data || []);
-      } catch (error) {
-        console.error('データの取得に失敗しました', error);
-      }
-    };
-    fetchData();
+    fetchInitialData()
+      .catch(() => setFetchFailed(true))
+      .finally(() => setIsLoading(false));
   }, []);
 
+  // FullCalendar の events コールバック仕様のため throw ではなく failureCallback でエラーを通知する
   const fetchEvents = useCallback(async (
     info: { startStr: string; endStr: string },
     successCallback: (events: object[]) => void,
@@ -98,6 +111,8 @@ export const useAdminCalendar = ({ refetchEvents }: UseAdminCalendarProps): UseA
     storeSettings,
     menus,
     hiddenDays,
+    isLoading,
+    fetchFailed,
     fetchEvents,
     handleSelect,
     handleEventClick,

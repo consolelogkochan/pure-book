@@ -16,6 +16,8 @@ export const AdminCalendar = () => {
     storeSettings,
     menus,
     hiddenDays,
+    isLoading,
+    fetchFailed,
     fetchEvents,
     handleSelect,
     handleEventClick,
@@ -31,7 +33,11 @@ export const AdminCalendar = () => {
 
         <div className="flex-1 p-4 overflow-auto">
           <div className="min-w-200 h-full">
-            {storeSettings ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full text-slate-500">カレンダーを読み込み中...</div>
+            ) : fetchFailed ? (
+              <div className="flex items-center justify-center h-full text-red-500">データの取得に失敗しました。ページを再読み込みしてください。</div>
+            ) : storeSettings ? (
               // @ts-expect-error FullCalendar の型定義と React 18 の型の不一致
               <FullCalendar
                 ref={calendarRef}
@@ -53,9 +59,7 @@ export const AdminCalendar = () => {
                 eventClick={handleEventClick}
                 height="100%"
               />
-            ) : (
-              <div className="flex items-center justify-center h-full text-slate-500">カレンダーを読み込み中...</div>
-            )}
+            ) : null}
           </div>
         </div>
 
