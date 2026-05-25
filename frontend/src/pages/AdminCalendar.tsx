@@ -18,6 +18,7 @@ export const AdminCalendar = () => {
     hiddenDays,
     isLoading,
     fetchFailed,
+    menusFetchFailed,
     fetchEvents,
     handleSelect,
     handleEventClick,
@@ -88,6 +89,12 @@ export const AdminCalendar = () => {
               ✕ 閉じる
             </button>
           </div>
+
+          {menusFetchFailed && (
+            <div className="mx-4 mt-3 p-3 rounded-lg text-sm font-medium bg-red-100 text-red-700">
+              メニューの取得に失敗しました。ページを再読み込みしてください。
+            </div>
+          )}
 
           {selectedBooking && (
             selectedBooking.isNew

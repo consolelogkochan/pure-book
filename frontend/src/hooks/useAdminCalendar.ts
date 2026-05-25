@@ -19,6 +19,7 @@ interface UseAdminCalendarReturn {
   hiddenDays: number[];
   isLoading: boolean;
   fetchFailed: boolean;
+  menusFetchFailed: boolean;
   fetchEvents: (
     info: { startStr: string; endStr: string },
     successCallback: (events: object[]) => void,
@@ -36,6 +37,7 @@ export const useAdminCalendar = ({ refetchEvents }: UseAdminCalendarProps): UseA
   const [menus, setMenus] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchFailed, setFetchFailed] = useState(false);
+  const [menusFetchFailed, setMenusFetchFailed] = useState(false);
 
   // 純粋な再取得のみ担う。エラー時は throw — 呼び出し元が責務に応じて処理する。
   // settings はカレンダー表示に必須のため失敗時は throw する。
@@ -51,6 +53,8 @@ export const useAdminCalendar = ({ refetchEvents }: UseAdminCalendarProps): UseA
     setStoreSettings(settingsResult.value.data);
     if (menusResult.status === 'fulfilled') {
       setMenus(menusResult.value.data.menus || menusResult.value.data || []);
+    } else {
+      setMenusFetchFailed(true);
     }
   };
 
@@ -113,6 +117,7 @@ export const useAdminCalendar = ({ refetchEvents }: UseAdminCalendarProps): UseA
     hiddenDays,
     isLoading,
     fetchFailed,
+    menusFetchFailed,
     fetchEvents,
     handleSelect,
     handleEventClick,
