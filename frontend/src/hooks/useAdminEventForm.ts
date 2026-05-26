@@ -3,6 +3,7 @@ import { useForm, type UseFormReturn } from 'react-hook-form';
 import { isAxiosError } from 'axios';
 import axiosInstance from '../axios';
 import type { Booking } from '../types';
+import { extractDate, extractTime } from '../utils/bookingHelpers';
 
 export type SelectedBooking = { isNew: boolean } & Partial<Booking>;
 
@@ -29,15 +30,6 @@ interface UseAdminEventFormReturn {
   messageType: 'success' | 'error' | null;
 }
 
-const extractDate = (startTime: string | undefined): string => {
-  if (!startTime) return '';
-  return startTime.substring(0, 10);
-};
-
-const extractTime = (startTime: string | undefined): string => {
-  if (!startTime) return '';
-  return new Date(startTime).toTimeString().substring(0, 5);
-};
 
 export const useAdminEventForm = ({
   selectedBooking,

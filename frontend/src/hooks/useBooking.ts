@@ -3,6 +3,7 @@ import { useForm, type UseFormReturn } from 'react-hook-form';
 import { isAxiosError } from 'axios';
 import axiosInstance from '../axios';
 import type { Menu, SurveyQuestion } from '../types';
+import { formatDateString, buildStartTime, formatSurveyResponses } from '../utils/bookingHelpers';
 
 export interface BookingFormData {
   customer_name: string;
@@ -31,30 +32,6 @@ interface UseBookingReturn {
   onSubmit: (data: BookingFormData) => Promise<void>;
 }
 
-const formatDateString = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const buildStartTime = (date: Date, time: string): string => {
-  return `${formatDateString(date)} ${time}:00`;
-};
-
-const formatSurveyResponses = (
-  data: BookingFormData,
-  questions: SurveyQuestion[]
-): Record<string, unknown> => {
-  const result: Record<string, unknown> = {};
-  questions.forEach(q => {
-    const answer = data[`survey_${q.id}`];
-    if (answer) {
-      result[q.question_text] = answer;
-    }
-  });
-  return result;
-};
 
 export const useBooking = (): UseBookingReturn => {
   const [menus, setMenus] = useState<Menu[]>([]);

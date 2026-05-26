@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import type { UseFormReturn } from 'react-hook-form';
 import axios from '../axios';
 import type { StoreSetting } from '../types';
+import { trimSeconds } from '../utils/bookingHelpers';
 
 const DEFAULT_SETTINGS: StoreSetting = {
   open_time: '10:00',
@@ -16,7 +17,6 @@ const DEFAULT_SETTINGS: StoreSetting = {
   cancel_deadline_hours: 24,
 };
 
-const trimSeconds = (time: string) => time.substring(0, 5);
 
 interface UsePeriodSettingsReturn {
   form: UseFormReturn<StoreSetting>;

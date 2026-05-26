@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios';
 import axios from '../axios';
 import type { Booking, BookingStatus, DisplayBooking, Menu, PaginationInfo } from '../types';
 import { downloadBlob } from '../utils/downloadBlob';
+import { formatSurveyResponse } from '../utils/bookingHelpers';
 
 export interface SearchFormInputs {
   date: string;
@@ -29,13 +30,6 @@ interface UseAdminSearchReturn {
   handlePageChange: (page: number) => void;
 }
 
-const formatSurveyResponse = (responses: Record<string, unknown> | null): string => {
-  if (!responses || typeof responses !== 'object') return 'なし';
-  return Object.entries(responses).map(([question, answer]) => {
-    const answerText = Array.isArray(answer) ? answer.join(', ') : String(answer);
-    return `${question}: ${answerText}`;
-  }).join(' / ');
-};
 
 export const useAdminSearch = (): UseAdminSearchReturn => {
   const form = useForm<SearchFormInputs>();
