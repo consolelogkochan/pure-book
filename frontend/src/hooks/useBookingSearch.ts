@@ -99,7 +99,7 @@ export const useBookingSearch = (): UseBookingSearchReturn => {
     }
   };
 
-  // Issue 2: awaitして再検索完了を確実に待機する
+  // 支払い完了後に最新状態を反映するため再検索の完了を await する
   const handlePaymentSuccess = async (): Promise<void> => {
     setShowPayment(false);
     await onSearch(form.getValues());
@@ -117,7 +117,6 @@ export const useBookingSearch = (): UseBookingSearchReturn => {
     onSearch,
     handleCancel,
     handlePaymentSuccess,
-    // Issue 1: setterの代わりに意図明確なアクション関数を expose
     openPaymentForm: () => setShowPayment(true),
     closePaymentForm: () => setShowPayment(false),
     openCancelModal: () => setIsModalOpen(true),

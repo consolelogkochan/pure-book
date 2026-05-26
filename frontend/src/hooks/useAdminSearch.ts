@@ -47,7 +47,7 @@ export const useAdminSearch = (): UseAdminSearchReturn => {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
-  // Issue 5: 成功バナー自動消去タイマー（refs は useCallback 依存なしで参照可能）
+  // 成功バナー自動消去タイマー（ref にすることで useCallback の依存配列から除外できる）
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export const useAdminSearch = (): UseAdminSearchReturn => {
   }, []);
 
   // 純粋な再取得のみ担う。エラー時は throw — 呼び出し元が責務に応じて処理する。
-  // Issue 2: タイマーをクリアして次の操作のメッセージと競合しないようにする
+  // タイマーをクリアして次の操作のメッセージと競合しないようにする
   const fetchSearchResults = useCallback(async (params: Partial<SearchFormInputs>, page: number = 1) => {
     if (dismissTimerRef.current) {
       clearTimeout(dismissTimerRef.current);
@@ -82,7 +82,6 @@ export const useAdminSearch = (): UseAdminSearchReturn => {
     }
   }, []);
 
-  // Issue 4: メニュー取得失敗をインラインバナーで通知
   useEffect(() => {
     Promise.all([
       axios.get('/menus')
@@ -107,7 +106,7 @@ export const useAdminSearch = (): UseAdminSearchReturn => {
     [results],
   );
 
-  // Issue 2: isSaving 中の並行実行を防止（fetchSearchResults との競合を避ける）
+  // isSaving 中は fetchSearchResults との競合を招くため検索を防止
   const onSubmit = (data: SearchFormInputs) => {
     if (isSaving) return;
     fetchSearchResults(data, 1).catch(() => {
@@ -116,7 +115,6 @@ export const useAdminSearch = (): UseAdminSearchReturn => {
     });
   };
 
-  // Issue 3: isDownloading ガードで連打による重複ダウンロードを防止
   const handleDownloadCsv = async () => {
     if (isDownloading) return;
     if (dismissTimerRef.current) {
@@ -152,12 +150,11 @@ export const useAdminSearch = (): UseAdminSearchReturn => {
     setMessageType(null);
     try {
       await axios.patch(`/admin/bookings/${id}/status`, { status: newStatus });
-      // Issue 1: ローカル更新ではなくサーバーを再フェッチして payment_status の変化も反映
+      // ローカル更新では payment_status の変化が反映されないためサーバーを再フェッチ
       // fetchSearchResults は成功時にメッセージをクリアするため、成功メッセージは再フェッチ後にセット
       await fetchSearchResults(form.getValues(), pagination?.current_page ?? 1).catch(() => {});
       setMessage('ステータスを更新しました');
       setMessageType('success');
-      // Issue 5: 成功バナーを3秒後に自動消去
       dismissTimerRef.current = setTimeout(() => {
         setMessage('');
         setMessageType(null);
@@ -174,7 +171,7 @@ export const useAdminSearch = (): UseAdminSearchReturn => {
     }
   };
 
-  // Issue 2: isSaving 中のページ変更を防止（fetchSearchResults との競合を避ける）
+  // isSaving 中は fetchSearchResults との競合を招くためページ変更を防止
   const handlePageChange = (page: number) => {
     if (isSaving) return;
     fetchSearchResults(form.getValues(), page).catch(() => {

@@ -99,7 +99,7 @@ export const useHoursSettings = (): UseHoursSettingsReturn => {
 
     setIsSaving(true);
     try {
-      // Issue 5: 保存直前に最新値を取得し、PeriodSettings の変更を保持したままマージして送信
+      // 保存直前に最新値を取得し、PeriodSettings 側の変更を上書きしないようマージして送信
       const latest = await axios.get('/admin/settings');
       await axios.put('/admin/settings', {
         ...latest.data,

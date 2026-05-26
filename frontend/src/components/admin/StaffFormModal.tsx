@@ -50,7 +50,7 @@ export const StaffFormModal = ({ isOpen, editingStaff, onSuccess, onClose }: Pro
           headers: { Accept: 'application/json' },
         });
       }
-      await onSuccess().catch(() => {}); // Issue 1: 再取得失敗を保存失敗と区別する
+      await onSuccess().catch(() => {}); // 再取得失敗を保存失敗と混同しないよう無視する
       onClose();
     } catch (error) {
       setErrorMessage('保存に失敗しました。通信環境をご確認ください。');

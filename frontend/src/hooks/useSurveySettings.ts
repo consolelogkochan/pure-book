@@ -44,8 +44,7 @@ export const useSurveySettings = (): UseSurveySettingsReturn => {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Issue 1: useEffect([questions]) を廃止し、ユーザー操作関数の冒頭で明示的にメッセージをクリア。
-  // fetchSurveyQuestions による setQuestions ではクリアされないため、保存後の成功メッセージが維持される。
+  // useEffect([questions]) を使うと fetchSurveyQuestions の更新時も消えてしまうため、操作関数の冒頭で明示的にクリアする
   const addSurveyQuestion = () => {
     setMessage('');
     setQuestions(prev => [
@@ -67,7 +66,7 @@ export const useSurveySettings = (): UseSurveySettingsReturn => {
   const handleSave = async () => {
     if (isSaving || fetchFailed) return;
     setIsSaving(true);
-    setMessage(''); // Issue 4: 保存開始時に前回メッセージをクリア
+    setMessage('');
     try {
       await axios.post('/admin/survey-questions', { questions }, {
         headers: { Accept: 'application/json' },

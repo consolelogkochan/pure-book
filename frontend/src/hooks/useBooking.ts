@@ -70,7 +70,7 @@ export const useBooking = (): UseBookingReturn => {
 
   const form = useForm<BookingFormData>();
 
-  // Issue 2: フィールド編集時にエラーバナーをクリア（バナーとバリデーションエラーの並立を防ぐ）
+  // フィールド編集時にエラーバナーをクリア（バナーとバリデーションエラーの並立を防ぐ）
   const { watch } = form;
   useEffect(() => {
     const subscription = watch(() => setErrorMessage(null));
@@ -116,7 +116,7 @@ export const useBooking = (): UseBookingReturn => {
       });
       setAvailableSlots(response.data.available_slots || response.data || []);
     } catch {
-      // Issue 3: スロット取得失敗をユーザーに通知（空き無しと区別できるようにする）
+      // スロット取得失敗をユーザーに通知（空き無しと区別できるようにする）
       setErrorMessage('空き時間の取得に失敗しました。日付を選び直してください。');
     }
   };

@@ -1,7 +1,7 @@
 import type { SurveyQuestion } from '../../types';
 
-// Issue 5: qIndex を除去し、updateQuestion/removeQuestion を事前束縛済みの関数として受け取る。
-// Issue 3: isSaving を除去し、fieldset disabled（親側）に一元化。
+// index を渡す代わりに呼び出し元で束縛済みの関数を受け取り、コンポーネントの責務を描画のみに限定する
+// isSaving は受け取らず、親の fieldset disabled で一括制御する
 interface Props {
   question: SurveyQuestion;
   updateQuestion: (newQuestion: SurveyQuestion) => void;

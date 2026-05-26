@@ -26,7 +26,7 @@ export const useResourceSettings = (): UseResourceSettingsReturn => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
 
-  // Issue 1: 純粋な再取得のみ担う。エラー時は throw — 呼び出し元が責務に応じて処理する。
+  // 純粋な再取得のみ担う。エラー時は throw — 呼び出し元が責務に応じて処理する。
   const fetchResources = async () => {
     const res = await axios.get('/admin/resources');
     const formattedData = res.data.map((staff: Staff) => ({
@@ -36,7 +36,7 @@ export const useResourceSettings = (): UseResourceSettingsReturn => {
     setStaffs(formattedData);
   };
 
-  // Issue 1: fetchFailed のセットは初回ロード時のみ。保存後の再取得失敗は fetchFailed を汚染しない。
+  // fetchFailed のセットは初回ロード時のみ。保存後の再取得失敗は fetchFailed を汚染しない。
   useEffect(() => {
     fetchResources()
       .catch(() => {
@@ -61,14 +61,14 @@ export const useResourceSettings = (): UseResourceSettingsReturn => {
   const handleBulkSave = async () => {
     if (isSaving || fetchFailed) return;
     setIsSaving(true);
-    setMessage(''); // Issue 3: 保存開始時に前回メッセージをクリア
+    setMessage('');
     try {
-      // Issue 4: シフト管理に必要な id と schedule のみ送信
+      // シフト管理に必要な id と schedule のみ送信（不要なフィールドを除外）
       const payload = staffs.map(s => ({ id: s.id, schedule: s.schedule }));
       await axios.post('/admin/resources/bulk', payload, {
         headers: { Accept: 'application/json' },
       });
-      // Issue 2: 保存後の再取得失敗は無視し、fetchFailed を true にしない
+      // 保存後の再取得失敗は無視し、fetchFailed を汚染しない
       await fetchResources().catch(() => {});
       setMessage('シフトを一括保存しました');
       setMessageType('success');

@@ -59,8 +59,7 @@ export const useStaffSettings = (): UseStaffSettingsReturn => {
     setEditingStaff(null);
   };
 
-  // Issue 2: メッセージクリアを requestToggle から confirmToggle 実行時に移動。
-  // キャンセル時に前の成功メッセージが消えたままになる副作用を解消する。
+  // キャンセル時に前の成功メッセージが消える副作用を避けるため、メッセージクリアは confirmToggle 側で行う
   const requestToggle = (staff: Staff) => {
     setConfirmingStaff(staff);
   };
@@ -70,10 +69,10 @@ export const useStaffSettings = (): UseStaffSettingsReturn => {
   const confirmToggle = async () => {
     if (!confirmingStaff || isSaving) return;
     const target = confirmingStaff;
-    // Issue 4: 確認UIを即座に非表示にして連打による二重送信の経路を断つ
+    // 確認UIを即座に非表示にして連打による二重送信の経路を断つ
     setConfirmingStaff(null);
     setIsSaving(true);
-    setMessage(''); // Issue 2
+    setMessage('');
     try {
       await axios.patch(`/admin/staffs/${target.id}/toggle-status`, {}, {
         headers: { Accept: 'application/json' },

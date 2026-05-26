@@ -85,7 +85,7 @@ export const StaffSettings = () => {
                       </button>
                     </div>
                   ) : (
-                    // Issue 3: 確認UI表示中は他行のボタンを無効化して操作の混在を防ぐ
+                    // 確認UI表示中は他行のボタンを無効化して操作の混在を防ぐ
                     <div className="space-x-2">
                       <button
                         onClick={() => openModal(staff)}

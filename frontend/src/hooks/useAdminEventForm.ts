@@ -60,7 +60,7 @@ export const useAdminEventForm = ({
     },
   });
 
-  // Issue 3: unmount 時に成功タイマーをキャンセル（ドロワーを早期に閉じた場合の二重呼び出し防止）
+  // unmount 時に成功タイマーをキャンセル（ドロワーを早期に閉じた場合の二重呼び出し防止）
   useEffect(() => {
     return () => {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -68,7 +68,7 @@ export const useAdminEventForm = ({
   }, []);
 
   const { watch } = form;
-  // Issue 1: message と messageType を両方リセット（片方だけ残ると次の成功バナーが誤色になる）
+  // message と messageType を両方リセット（片方だけ残ると次の成功バナーが誤色になる）
   useEffect(() => {
     const subscription = watch(() => {
       setMessage('');
@@ -96,7 +96,7 @@ export const useAdminEventForm = ({
       } else {
         await axiosInstance.put(`/admin/bookings/${selectedBooking.id}`, payload);
       }
-      // Issue 3: 成功バナーを一瞬表示してからドロワーを閉じる
+      // 成功バナーを一瞬表示してからドロワーを閉じる
       const successMessage = selectedBooking.isNew ? '新規予約を登録しました' : '予約情報を更新しました';
       setMessage(successMessage);
       setMessageType('success');

@@ -12,12 +12,11 @@ interface MenuFormData {
 interface Props {
   isOpen: boolean;
   editingMenu: Menu | null;
-  onSuccess: () => Promise<void>; // Issue 5: 非同期性を型で明示
+  onSuccess: () => Promise<void>; // 呼び出し元で await するため Promise<void> で定義
   onClose: () => void;
 }
 
 export const MenuFormModal = ({ isOpen, editingMenu, onSuccess, onClose }: Props) => {
-  // Issue 1: formState.isSubmitting を使い、手動の isSubmitting ステートを廃止
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<MenuFormData>({
     defaultValues: { name: '', price: 0, duration_minutes: 60 },
   });
@@ -33,7 +32,6 @@ export const MenuFormModal = ({ isOpen, editingMenu, onSuccess, onClose }: Props
     setErrorMessage('');
   }, [isOpen, editingMenu, reset]);
 
-  // Issue 2: フォーム変更時に errorMessage を自動クリア
   useEffect(() => {
     const subscription = watch(() => setErrorMessage(''));
     return () => subscription.unsubscribe();
@@ -53,7 +51,7 @@ export const MenuFormModal = ({ isOpen, editingMenu, onSuccess, onClose }: Props
           headers: { Accept: 'application/json' },
         });
       }
-      await onSuccess(); // Issue 5: 再取得完了を待ってからモーダルを閉じる
+      await onSuccess(); // 再取得完了を待ってからモーダルを閉じる
       onClose();
     } catch (error) {
       setErrorMessage('保存に失敗しました。通信環境をご確認ください。');
