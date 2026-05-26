@@ -331,40 +331,4 @@ class BookingService
             );
         }
     }
-
-    /**
-     * アンケート回答を "質問: 回答 / 質問: 回答" 形式のテキストに変換する
-     */
-    public function formatSurveyResponsesAsText(mixed $responses): string
-    {
-        if (is_string($responses)) {
-            $responses = json_decode($responses, true);
-        }
-
-        if (! is_array($responses)) {
-            return '';
-        }
-
-        $surveys = [];
-        foreach ($responses as $question => $answer) {
-            $answerText = is_array($answer)
-                ? implode(', ', array_map(fn (mixed $v): string => (string) $v, $answer))
-                : (string) $answer;
-            $surveys[] = $question.': '.$answerText;
-        }
-
-        return implode(' / ', $surveys);
-    }
-
-    /**
-     * 決済ステータスを日本語テキストに変換する
-     */
-    public function formatPaymentStatus(string $paymentStatus): string
-    {
-        return match ($paymentStatus) {
-            'paid' => '事前決済済',
-            'refunded' => '返金済',
-            default => '未決済',
-        };
-    }
 }

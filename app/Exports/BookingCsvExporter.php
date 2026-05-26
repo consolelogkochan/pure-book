@@ -4,13 +4,10 @@ namespace App\Exports;
 
 use App\Models\Booking;
 use App\Models\Menu;
-use App\Services\BookingService;
 use Illuminate\Support\Carbon;
 
 class BookingCsvExporter
 {
-    public function __construct(private BookingService $bookingService) {}
-
     /**
      * @return string[]
      */
@@ -36,14 +33,44 @@ class BookingCsvExporter
             (string) $booking->customer_email,
             $menuName,
             $booking->status === 'cancelled' ? 'キャンセル' : '予約確定',
-            $this->bookingService->formatPaymentStatus((string) $booking->payment_status),
+            $this->formatPaymentStatus((string) $booking->payment_status),
             (string) $booking->customer_memo,
-            $this->bookingService->formatSurveyResponsesAsText($booking->survey_responses),
+            $this->formatSurveyResponsesAsText($booking->survey_responses),
         ];
     }
 
-    protected function formatStartTime(string $startTime): string
+    private function formatStartTime(string $startTime): string
     {
         return Carbon::parse($startTime)->format('Y-m-d H:i');
+    }
+
+    private function formatPaymentStatus(string $paymentStatus): string
+    {
+        return match ($paymentStatus) {
+            'paid' => '事前決済済',
+            'refunded' => '返金済',
+            default => '未決済',
+        };
+    }
+
+    private function formatSurveyResponsesAsText(mixed $responses): string
+    {
+        if (is_string($responses)) {
+            $responses = json_decode($responses, true);
+        }
+
+        if (! is_array($responses)) {
+            return '';
+        }
+
+        $surveys = [];
+        foreach ($responses as $question => $answer) {
+            $answerText = is_array($answer)
+                ? implode(', ', array_map(fn (mixed $v): string => (string) $v, $answer))
+                : (string) $answer;
+            $surveys[] = $question.': '.$answerText;
+        }
+
+        return implode(' / ', $surveys);
     }
 }
