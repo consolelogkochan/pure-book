@@ -108,15 +108,41 @@ class BookingService
     }
 
     /**
-     * 指定日のキャンセル以外の予約一覧を返す
+     * 指定曜日に出勤している有効なスタッフの ID 一覧を返す
      *
+     * getAvailableStaffCount() と同一条件。count が必要な場合は count() で取得すること。
+     *
+     * @return array<int, int>
+     */
+    public function getAvailableStaffIds(string $dayOfWeek): array
+    {
+        return Staff::where('is_active', true)
+            ->whereHas('schedule', function ($q) use ($dayOfWeek) {
+                $q->where($dayOfWeek, true);
+            })
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * 指定日・指定スタッフのキャンセル以外の予約一覧を返す
+     *
+     * staffIds を渡すことでシフト変更後の非出勤スタッフの予約を除外し、
+     * 空き枠計算の過剰カウントを防ぐ。
+     *
+     * @param  array<int, int>  $staffIds
      * @return Collection<int, Booking>
      */
-    public function getBookingsOnDate(Carbon $date): Collection
+    public function getBookingsOnDate(Carbon $date, array $staffIds = []): Collection
     {
-        return Booking::whereDate('start_time', $date->format('Y-m-d'))
-            ->where('status', '!=', 'cancelled')
-            ->get();
+        $query = Booking::whereDate('start_time', $date->format('Y-m-d'))
+            ->where('status', '!=', 'cancelled');
+
+        if (! empty($staffIds)) {
+            $query->whereIn('staff_id', $staffIds);
+        }
+
+        return $query->get();
     }
 
     /**

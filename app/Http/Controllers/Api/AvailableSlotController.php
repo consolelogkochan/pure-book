@@ -28,7 +28,8 @@ class AvailableSlotController extends Controller
             return response()->json([]);
         }
 
-        $staffCount = $bookingService->getAvailableStaffCount($dayOfWeek);
+        $staffIds = $bookingService->getAvailableStaffIds($dayOfWeek);
+        $staffCount = count($staffIds);
         if ($staffCount === 0) {
             return response()->json([]);
         }
@@ -37,7 +38,7 @@ class AvailableSlotController extends Controller
             return response()->json([]);
         }
 
-        $bookings = $bookingService->getBookingsOnDate($targetDate);
+        $bookings = $bookingService->getBookingsOnDate($targetDate, $staffIds);
 
         $slots = $bookingService->calculateAvailableSlots(
             $targetDate,
