@@ -46,7 +46,6 @@ class BookingController extends Controller
                 $assignedStaff = $bookingService->assignStaff($availableStaffs, $overlappingBookings);
 
                 return $bookingService->createBooking([
-                    'booking_reference' => $bookingService->generateBookingReference(),
                     'user_id' => auth()->id(),
                     'staff_id' => $assignedStaff->id,
                     'menu_id' => $menu->id,

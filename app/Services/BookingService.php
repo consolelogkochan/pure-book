@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Setting;
 use App\Models\Staff;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -279,32 +280,29 @@ class BookingService
     }
 
     /**
-     * "BKG-" プレフィックス付きのランダムな予約番号を生成する
+     * 予約レコードを作成して返す
      *
-     * DB に存在しない番号が生成されるまで最大5回リトライする。
+     * booking_reference を内部で生成してセットする。
+     * exists() チェックと INSERT の間の TOCTOU を排除するため、
+     * unique 制約違反を直接 catch してリトライする。
+     *
+     * @param  array<string, mixed>  $data  booking_reference を含まないデータ
      *
      * @throws \RuntimeException 5回試みても衝突が解消しない場合
      */
-    public function generateBookingReference(): string
+    public function createBooking(array $data): Booking
     {
         for ($i = 0; $i < 5; $i++) {
-            $reference = 'BKG-'.strtoupper(Str::random(8));
-            if (! Booking::where('booking_reference', $reference)->exists()) {
-                return $reference;
+            try {
+                $data['booking_reference'] = 'BKG-'.strtoupper(Str::random(8));
+
+                return Booking::create($data);
+            } catch (UniqueConstraintViolationException) {
+                // 衝突した場合は次の反復で新しい参照番号を再生成する
             }
         }
 
         throw new \RuntimeException('予約番号の生成に失敗しました。しばらく時間をおいて再度お試しください。');
-    }
-
-    /**
-     * 予約レコードを作成して返す
-     *
-     * @param  array<string, mixed>  $data
-     */
-    public function createBooking(array $data): Booking
-    {
-        return Booking::create($data);
     }
 
     /**
