@@ -43,6 +43,8 @@ export const useAdminEventForm = ({
   selectedBooking,
   onSuccess,
 }: UseAdminEventFormProps): UseAdminEventFormReturn => {
+  // selectedBooking の変化はコンポーネントの再マウントで反映される前提。
+  // 再マウントなしで props が変化する設計に変更する場合は stale closure に注意。
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
