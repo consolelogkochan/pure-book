@@ -257,6 +257,7 @@ class BookingService
                 $q->where('start_time', '<', $endTime)
                     ->where('end_time', '>', $startTime);
             })
+            ->lockForUpdate()
             ->get();
     }
 

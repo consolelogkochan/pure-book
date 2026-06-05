@@ -28,7 +28,7 @@ class StoreBookingRequest extends FormRequest
             'menu_id' => ['required', 'integer', 'exists:menus,id'],
 
             // スタッフは任意だが、入力された場合はstaffsテーブルに存在すること
-            'staff_id' => ['nullable', 'integer', 'exists:staffs,id'],
+            'staff_id' => ['nullable', 'integer', 'exists:staff,id'],
 
             // 開始時間は必須で、正しい日時フォーマットかつ「現在時刻より未来」であること
             'start_time' => ['required', 'date', 'after:now'],
